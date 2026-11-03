@@ -1,0 +1,18 @@
+# Solo para desarrollo. Docker Compose aplica este archivo automáticamente
+# junto con docker-compose.yml.
+#
+# Publica PostgreSQL en 127.0.0.1 para conectarse desde el host
+# (DBeaver, pgAdmin o un backend ejecutado fuera de Docker).
+# En una red "internal" Docker no publica puertos, por eso la base de datos
+# se une además a una red de desarrollo.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    networks:
+      - backend_net
+      - dev_net
+
+networks:
+  dev_net:
