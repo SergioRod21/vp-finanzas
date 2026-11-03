@@ -37,3 +37,19 @@
   Lo que vino directamente del ERD (tablas, columnas, PK/FK/UK, `NOT NULL` en las FK obligatorias) no es una sugerencia de la AI.
 - **Decisión:** ✅ Aceptada
 - **Evidencia:** `db/01-schema.sql`
+
+## 3. Datos semilla del core
+
+- **Fecha:** 2026-11-03 · **Herramienta:** Claude Code (Opus 5.5)
+- **Contexto:** con `db/01-schema.sql` listo, faltaban los datos ficticios que exige la sección 3.1 del enunciado.
+- **Lo que pedí:** el script de datos semilla para la base de datos.
+- **Prompt:**
+  > Generame tambien el script de seed para la db
+- **Aporte de la AI:** generó `db/02-seed.sql`. Propuso por su cuenta:
+  - Contenido: 4 países, 4 departamentos, 4 niveles, 3 roles, 19 funciones, 16 cargos (uno por nivel en cada departamento), 36 asignaciones cargo-función y 40 colaboradores (10 por departamento, 3 inactivos)
+  - Correos con el dominio reservado `.example` (RFC 2606), que no puede pertenecer a ninguna organización real
+  - FKs resueltas por llave natural (`JOIN … ON titulo = …`), porque las PKs `IDENTITY ALWAYS` no admiten IDs fijos
+  - Un bloque `DO` final que verifica los conteos y aborta la transacción si falta alguna fila
+  - No crear usuarios en el seed: un hash fijo en un script versionado equivale a una contraseña conocida en el repositorio
+- **Decisión:** ✅ Aceptada
+- **Evidencia:** `db/02-seed.sql`. Se verificó en PostgreSQL 17 (Docker): 40 colaboradores, 10 por departamento
