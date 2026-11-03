@@ -1,6 +1,7 @@
 -- =============================================================================
 -- VP Finanzas: schema del core organizacional y de acceso
--- Motor: PostgreSQL 13 o superior
+-- Motor: PostgreSQL 15 o superior
+-- Requiere: 00-app-user.sql, ejecutado antes por el mismo rol administrador
 -- Fuente: docs/modelo-datos/erd.md
 -- =============================================================================
 
