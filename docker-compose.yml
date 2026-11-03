@@ -1,0 +1,37 @@
+# Configuración base del proyecto.
+# Uso:  cp .env.example .env   (completar las contraseñas)
+#       docker compose up -d db
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      # ${VAR:?mensaje} hace que Compose falle si la variable no está definida en .env
+      POSTGRES_DB: ${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Definir POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en .env}
+      # Leídas por db/00-app-user.sql
+      APP_DB_USER: ${APP_DB_USER:?Definir APP_DB_USER en .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Scripts de inicialización: se ejecutan en orden alfabético
+      # y SOLO cuando el volumen pgdata está vacío.
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # $$ evita que Compose interpole: la variable se resuelve dentro del contenedor.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend_net
+
+volumes:
+  pgdata:
+
+networks:
+  # Red de la capa de datos: sin salida a internet. Solo el backend se unirá a ella.
+  backend_net:
+    internal: true
