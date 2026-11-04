@@ -3,6 +3,8 @@ import { RouterProvider } from 'react-router/dom'
 
 import { CargoDetalleRoute } from '@/app/routes/cargo-detalle'
 import { CargosRoute } from '@/app/routes/cargos'
+import { ColaboradorDetalleRoute } from '@/app/routes/colaborador-detalle'
+import { ColaboradoresRoute } from '@/app/routes/colaboradores'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
@@ -50,11 +52,8 @@ const router = createBrowserRouter([
                   {
                     element: <RutaModulo modulo="colaboradores" />,
                     children: [
-                      { path: paths.colaboradores.lista, element: <ModuloEnConstruccion titulo="Colaboradores" /> },
-                      {
-                        path: paths.colaboradores.patronDetalle,
-                        element: <ModuloEnConstruccion titulo="Ficha del colaborador" />,
-                      },
+                      { path: paths.colaboradores.lista, element: <ColaboradoresRoute /> },
+                      { path: paths.colaboradores.patronDetalle, element: <ColaboradorDetalleRoute /> },
                     ],
                   },
                   {
