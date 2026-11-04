@@ -32,11 +32,20 @@ const MENSAJES_POR_ESTADO: Record<number, string> = {
 }
 
 /** Extrae un mensaje legible del cuerpo de error de FastAPI ({"detail": string | lista}). */
-function mensajeDeError(cuerpo: unknown, status: number): string {
+function mensajeDelCuerpo(cuerpo: unknown, status: number): string {
   const detalle = (cuerpo as { detail?: unknown } | null)?.detail
   if (typeof detalle === 'string') return detalle
   if (Array.isArray(detalle) && detalle.length > 0) return 'Los datos enviados no son válidos.'
   return MENSAJES_POR_ESTADO[status] ?? 'Ocurrió un error inesperado.'
+}
+
+/**
+ * Mensaje para mostrar al usuario a partir de cualquier error de una consulta o mutación:
+ * el de la API si es un ApiError; si no, el fetch no llegó al servidor (red o proxy caídos).
+ */
+export function mensajeDeError(error: unknown): string {
+  if (error instanceof ApiError) return error.message
+  return 'No se pudo conectar con el servidor. Revisa tu conexión e intenta nuevamente.'
 }
 
 export async function api<T>(ruta: string, opciones: OpcionesApi = {}): Promise<T> {
@@ -53,6 +62,6 @@ export async function api<T>(ruta: string, opciones: OpcionesApi = {}): Promise<
   if (respuesta.status === 204) return undefined as T
 
   const cuerpo: unknown = await respuesta.json().catch(() => null)
-  if (!respuesta.ok) throw new ApiError(respuesta.status, mensajeDeError(cuerpo, respuesta.status))
+  if (!respuesta.ok) throw new ApiError(respuesta.status, mensajeDelCuerpo(cuerpo, respuesta.status))
   return cuerpo as T
 }
