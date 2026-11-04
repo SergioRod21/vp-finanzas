@@ -1,7 +1,6 @@
 from fastapi import APIRouter
-from sqlalchemy import text
 
-from app.core.db import SessionDep
+from app.core.db import SessionDep, verificar_conexion
 
 router = APIRouter(prefix="/api", tags=["health"])
 
@@ -12,5 +11,5 @@ def health(session: SessionDep) -> dict[str, str]:
 
     Si PostgreSQL no responde, el manejador global de errores devuelve 503.
     """
-    session.exec(text("SELECT 1"))
+    verificar_conexion(session)
     return {"status": "ok"}

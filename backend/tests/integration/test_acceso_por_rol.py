@@ -7,38 +7,13 @@ usuarios de demostración. Requieren la base de datos levantada:
     SEED_USER_PASSWORD=<password> pytest -m integration
 """
 
-import os
-
 import pytest
-from fastapi.testclient import TestClient
 
-from app.main import app
+from tests.integration.conftest import CORREOS
 
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.skipif(not os.environ.get("RUN_INTEGRATION"), reason="requiere RUN_INTEGRATION=1"),
-]
+pytestmark = pytest.mark.integration
 
-CORREOS = {
-    "admin": "andres.quintero@vpfinanzas.example",            # Planificación Financiera
-    "jefe": "ricardo.palencia@vpfinanzas.example",            # Tesorería
-    "colaborador": "elena.carvajal@vpfinanzas.example",       # Tesorería
-}
 CAMPOS_RESUMEN = {"colaborador_id", "nombre", "apellido", "correo", "cargo"}
-
-
-@pytest.fixture(scope="module")
-def clientes():
-    """Un cliente autenticado por rol (un login por rol para todo el módulo)."""
-    app.dependency_overrides.clear()
-    clientes = {}
-    for rol, correo in CORREOS.items():
-        cliente = TestClient(app)
-        response = cliente.post("/api/auth/login", json={
-            "correo": correo, "password": os.environ["SEED_USER_PASSWORD"]})
-        assert response.status_code == 200, f"login de {rol} falló"
-        clientes[rol] = cliente
-    return clientes
 
 
 @pytest.fixture(scope="module")
