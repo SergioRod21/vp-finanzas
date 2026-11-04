@@ -13,6 +13,9 @@
 | `colaborador` | Ficha laboral de cada persona |
 | `rol` | Roles de acceso (Administrador, Jefe de Departamento, Colaborador) |
 | `usuario` | Credencial de acceso al portal |
+| `motivo_nota_credito` | Catálogo de motivos de las notas de crédito |
+| `nota_credito` | Solicitud de nota de crédito y su estado actual |
+| `nota_credito_historico` | Historial de acciones sobre cada nota de crédito (auditoría) |
 
 ## Diagrama
 
@@ -26,6 +29,12 @@ erDiagram
     nivel        ||--o{ cargo         : ""
     cargo        ||--o{ cargo_funcion : ""
     funcion      ||--o{ cargo_funcion : ""
+    usuario      ||--o{ nota_credito  : "solicita"
+    usuario      |o--o{ nota_credito  : "resuelve"
+    departamento ||--o{ nota_credito  : ""
+    motivo_nota_credito ||--o{ nota_credito : ""
+    nota_credito ||--|{ nota_credito_historico : ""
+    usuario      ||--o{ nota_credito_historico : ""
 
     pais {
         integer pais_id PK
@@ -74,5 +83,32 @@ erDiagram
     funcion {
         integer funcion_id PK
         varchar descripcion UK
+    }
+    motivo_nota_credito {
+        integer motivo_nota_credito_id PK
+        varchar descripcion UK
+    }
+    nota_credito {
+        integer nota_credito_id PK
+        integer solicitante_id FK
+        integer resolutor_id FK
+        integer departamento_id FK
+        integer motivo_nota_credito_id FK
+        varchar numero UK
+        numeric monto
+        varchar detalle
+        varchar estado_actual
+        timestamp creada_en
+        timestamp actualizada_en
+    }
+    nota_credito_historico {
+        integer nota_credito_historico_id PK
+        integer nota_credito_id FK
+        integer usuario_id FK
+        varchar accion
+        varchar estado_anterior
+        varchar estado_nuevo
+        varchar comentario
+        timestamp ocurrido_en
     }
 ```
