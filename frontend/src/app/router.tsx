@@ -1,6 +1,8 @@
 import { createBrowserRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 
+import { CargoDetalleRoute } from '@/app/routes/cargo-detalle'
+import { CargosRoute } from '@/app/routes/cargos'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
@@ -58,8 +60,8 @@ const router = createBrowserRouter([
                   {
                     element: <RutaModulo modulo="cargos" />,
                     children: [
-                      { path: paths.cargos.lista, element: <ModuloEnConstruccion titulo="Cargos y funciones" /> },
-                      { path: paths.cargos.patronDetalle, element: <ModuloEnConstruccion titulo="Detalle del cargo" /> },
+                      { path: paths.cargos.lista, element: <CargosRoute /> },
+                      { path: paths.cargos.patronDetalle, element: <CargoDetalleRoute /> },
                     ],
                   },
                   {
