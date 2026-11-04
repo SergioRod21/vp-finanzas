@@ -87,9 +87,10 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 - **Decisión:** el backend se conecta a PostgreSQL con un usuario propio (`APP_DB_USER`) que solo puede leer y modificar filas (`SELECT`, `INSERT`, `UPDATE`, `DELETE`). No puede crear, alterar ni eliminar tablas, ni crear roles. El usuario administrador (`POSTGRES_USER`) solo se usa para inicializar la base de datos: crear el usuario de la aplicación, el schema y el seed.
 - **Alternativa descartada:** que el backend use el usuario administrador. Simplifica la configuración, pero ese usuario es superusuario: una vulnerabilidad en el backend, como una inyección SQL, daría control total sobre la base de datos.
 - **Implementación:** `db/00-app-user.sql` crea el usuario y define permisos por defecto (`ALTER DEFAULT PRIVILEGES`) para todas las tablas que el administrador cree después, incluidas las de módulos futuros. El nombre y la contraseña se leen de variables de entorno con `\getenv` de psql, así que ninguna credencial queda en el repositorio.
-- **En un despliegue real:**
-  - Restringir más las tablas de auditoría: solo `INSERT` y `SELECT`, para que el historial no pueda modificarse ni borrarse desde la aplicación.
-  - Gestionar las credenciales con un gestor de secretos (por ejemplo, Docker secrets o el servicio del proveedor cloud) en lugar de un archivo `.env`, y rotarlas periódicamente.
+- **Restricciones adicionales en el módulo de notas de crédito:** `db/03-notas-credito.sql` le quita al usuario de la aplicación permisos que no necesita:
+  - Sobre `nota_credito_historico`, sin `UPDATE` ni `DELETE`: el historial de auditoría solo admite agregar y consultar, así que no se puede modificar ni borrar desde la aplicación.
+  - Sobre `nota_credito`, sin `DELETE`: las notas no se borran, se anulan.
+- **En un despliegue real:** gestionar las credenciales con un gestor de secretos (por ejemplo, Docker secrets o el servicio del proveedor cloud) en lugar de un archivo `.env`, y rotarlas periódicamente.
 
 ### S2. Mecanismo de sesión
 
