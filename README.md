@@ -2,7 +2,7 @@
 
 Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, acceso por rol y departamento, y un proceso de negocio con auditoría.
 
-> Proyecto en desarrollo. Disponibles: base de datos, autenticación y los módulos de consulta de la API (Mi perfil, Colaboradores, Cargos y funciones).
+> Proyecto en desarrollo. La API está completa: autenticación, módulos de consulta (Mi perfil, Colaboradores, Cargos y funciones) y el flujo de aprobación de notas de crédito. Falta el frontend.
 
 ## Requisitos
 
@@ -107,6 +107,13 @@ Todos los endpoints, salvo `health` y `login`, requieren sesión. Qué ve cada r
 | `GET /api/perfil` | Su perfil | Su perfil | Su perfil |
 | `GET /api/colaboradores[?departamento_id=]` · `GET /api/colaboradores/{id}` | Todos, ficha completa | Su departamento, ficha completa | Compañeros activos de su departamento, solo datos de contacto |
 | `GET /api/cargos[?departamento_id=]` · `GET /api/cargos/{id}` | Todos | Su departamento | Solo su cargo |
+| `GET /api/motivos-nota-credito` | ✅ | ✅ | ❌ |
+| `GET /api/notas-credito[?estado=]` · `GET /api/notas-credito/{id}` · `GET /api/notas-credito/{id}/historial` | Todas | Su departamento | ❌ |
+| `POST /api/notas-credito` | ❌ | Para su departamento | ❌ |
+| `POST /api/notas-credito/{id}/aprobar` · `POST /api/notas-credito/{id}/rechazar` (comentario obligatorio) | Las que no solicitó | ❌ | ❌ |
+| `POST /api/notas-credito/{id}/anular` | ❌ | Solo las propias y pendientes | ❌ |
+
+Códigos de error: **401** sin sesión, **403** rol sin permiso, **404** recurso inexistente o de otro departamento, **409** acción no válida para el estado actual de la nota (por ejemplo, aprobar una nota ya rechazada), **422** datos inválidos. Todas las respuestas de error tienen la forma `{"detail": "..."}`.
 
 ## Tests del backend
 
