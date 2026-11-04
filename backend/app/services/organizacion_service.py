@@ -1,12 +1,14 @@
 """Consultas de los módulos Colaboradores, Cargos y funciones, y Mi perfil.
 
 Cada función aplica el alcance de la matriz de permisos (S3) en la propia consulta:
-los datos fuera de alcance nunca se leen de la base de datos. Devuelve None cuando
-el recurso no existe o no está al alcance del usuario; el router responde 404 en
-ambos casos, para no revelar que el recurso existe.
+los datos fuera de alcance nunca se leen de la base de datos. Si el recurso no existe
+o no está al alcance del usuario, lanza NoEncontrado (404) en ambos casos, para no
+revelar que el recurso existe.
 """
 
 from sqlmodel import Session, col, select
+
+from app.domain.errores import NoEncontrado
 
 from app.models import (
     Cargo,
@@ -79,10 +81,10 @@ def _aplicar_alcance_colaboradores(stmt, usuario: UsuarioActual):
 
 def listar_colaboradores(
     session: Session, usuario: UsuarioActual, departamento_id: int | None = None
-) -> list[ColaboradorFicha] | list[ColaboradorResumen] | None:
+) -> list[ColaboradorFicha] | list[ColaboradorResumen]:
     permitido, filtro = resolver_filtro_departamento(usuario, departamento_id)
     if not permitido:
-        return None
+        raise NoEncontrado("Departamento no encontrado")
 
     stmt = _aplicar_alcance_colaboradores(_consulta_colaboradores(), usuario)
     if filtro is not None:
@@ -95,13 +97,13 @@ def listar_colaboradores(
 
 def obtener_colaborador(
     session: Session, usuario: UsuarioActual, colaborador_id: int
-) -> ColaboradorFicha | ColaboradorResumen | None:
+) -> ColaboradorFicha | ColaboradorResumen:
     stmt = _aplicar_alcance_colaboradores(
         _consulta_colaboradores().where(Colaborador.colaborador_id == colaborador_id), usuario
     )
     fila = session.exec(stmt).first()
     if fila is None:
-        return None
+        raise NoEncontrado("Colaborador no encontrado")
     return _a_resumen(*fila) if es_colaborador(usuario) else _a_ficha(*fila)
 
 
@@ -154,10 +156,10 @@ def _a_cargo_ficha(cargo, nivel, departamento, funciones: list[str]) -> CargoFic
 
 def listar_cargos(
     session: Session, usuario: UsuarioActual, departamento_id: int | None = None
-) -> list[CargoFicha] | None:
+) -> list[CargoFicha]:
     permitido, filtro = resolver_filtro_departamento(usuario, departamento_id)
     if not permitido:
-        return None
+        raise NoEncontrado("Departamento no encontrado")
 
     stmt = _aplicar_alcance_cargos(_consulta_cargos(), usuario)
     if filtro is not None:
@@ -171,11 +173,11 @@ def listar_cargos(
     ]
 
 
-def obtener_cargo(session: Session, usuario: UsuarioActual, cargo_id: int) -> CargoFicha | None:
+def obtener_cargo(session: Session, usuario: UsuarioActual, cargo_id: int) -> CargoFicha:
     stmt = _aplicar_alcance_cargos(_consulta_cargos().where(Cargo.cargo_id == cargo_id), usuario)
     fila = session.exec(stmt).first()
     if fila is None:
-        return None
+        raise NoEncontrado("Cargo no encontrado")
     cargo, nivel, departamento = fila
     funciones = _funciones_por_cargo(session, [cargo.cargo_id])
     return _a_cargo_ficha(cargo, nivel, departamento, funciones[cargo.cargo_id])
@@ -184,10 +186,10 @@ def obtener_cargo(session: Session, usuario: UsuarioActual, cargo_id: int) -> Ca
 # --- Mi perfil ---------------------------------------------------------------------
 
 
-def obtener_perfil(session: Session, usuario: UsuarioActual) -> Perfil | None:
+def obtener_perfil(session: Session, usuario: UsuarioActual) -> Perfil:
     fila = session.exec(
         _consulta_colaboradores().where(Colaborador.colaborador_id == usuario.colaborador_id)
     ).first()
     if fila is None:
-        return None
+        raise NoEncontrado("Perfil no encontrado")
     return Perfil(**_a_ficha(*fila).model_dump(), rol=usuario.rol)

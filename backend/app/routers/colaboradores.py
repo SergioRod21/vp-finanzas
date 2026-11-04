@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
 
 from app.core.db import SessionDep
 from app.dependencies import CurrentUser
@@ -17,15 +17,9 @@ def listar_colaboradores(
 ):
     """Administrador: todos (filtro opcional por departamento). Jefe: su departamento.
     Colaborador: compañeros activos de su departamento, solo datos de contacto."""
-    colaboradores = organizacion_service.listar_colaboradores(session, usuario, departamento_id)
-    if colaboradores is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Departamento no encontrado")
-    return colaboradores
+    return organizacion_service.listar_colaboradores(session, usuario, departamento_id)
 
 
 @router.get("/{colaborador_id}", response_model=ColaboradorFicha | ColaboradorResumen)
 def obtener_colaborador(colaborador_id: int, usuario: CurrentUser, session: SessionDep):
-    colaborador = organizacion_service.obtener_colaborador(session, usuario, colaborador_id)
-    if colaborador is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Colaborador no encontrado")
-    return colaborador
+    return organizacion_service.obtener_colaborador(session, usuario, colaborador_id)

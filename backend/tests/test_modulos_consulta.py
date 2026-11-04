@@ -1,7 +1,8 @@
 """Tests de los routers de consulta, sin base de datos.
 
-Verifican lo que es responsabilidad del router: exigir sesión, traducir "fuera de
-alcance" a 404 y no exponer más campos de los que corresponden a cada rol. Las
+Verifican lo que es responsabilidad de la capa HTTP: exigir sesión, traducir
+"fuera de alcance" (NoEncontrado) a 404 y no exponer más campos de los que
+corresponden a cada rol. Las
 reglas de alcance contra datos reales se verifican en tests/integration/.
 """
 
@@ -10,6 +11,7 @@ from datetime import date
 import pytest
 
 from app.dependencies import get_current_user
+from app.domain.errores import NoEncontrado
 from app.main import app
 from app.models import ColaboradorFicha, ColaboradorResumen
 from app.services import organizacion_service
@@ -58,7 +60,10 @@ def test_endpoints_exigen_sesion(make_client, ruta):
     ],
 )
 def test_fuera_de_alcance_responde_404(client_como, monkeypatch, ruta, funcion, detalle):
-    monkeypatch.setattr(organizacion_service, funcion, lambda *args, **kwargs: None)
+    def fuera_de_alcance(*args, **kwargs):
+        raise NoEncontrado(detalle)
+
+    monkeypatch.setattr(organizacion_service, funcion, fuera_de_alcance)
 
     response = client_como(JEFE).get(ruta)
 
