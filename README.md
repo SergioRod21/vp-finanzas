@@ -51,6 +51,7 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `03-notas-credito.sql` | Tablas del módulo de notas de crédito, con sus reglas de negocio |
    | `04-seed-notas-credito.sql` | Catálogo de motivos de nota de crédito |
    | `05-seed-usuarios.sql` | Usuarios de prueba, con la contraseña de `SEED_USER_PASSWORD` |
+   | `06-seed-notas-credito-ejemplo.sql` | 8 notas de crédito de ejemplo en los cuatro estados, con su historial |
 
 3. Verificar:
 
