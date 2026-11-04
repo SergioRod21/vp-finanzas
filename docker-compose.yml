@@ -14,6 +14,8 @@ services:
       # Leídas por db/00-app-user.sql
       APP_DB_USER: ${APP_DB_USER:?Definir APP_DB_USER en .env}
       APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}
+      # Leída por db/05-seed-usuarios.sql (contraseña de los usuarios de demostración)
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?Definir SEED_USER_PASSWORD en .env}
     volumes:
       - pgdata:/var/lib/postgresql/data
       # Scripts de inicialización: se ejecutan en orden alfabético
