@@ -110,9 +110,43 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ### S3. Control de acceso por rol y departamento
 
-- **Decisión:**
+- **Decisión:** el acceso se define con la siguiente matriz de permisos, y el backend la verifica en cada endpoint según el rol del usuario y su departamento (`colaborador → cargo → departamento`).
+
+  ✅ permitido · 🔸 permitido con límites · ❌ no permitido
+
+  | Módulo / acción | Administrador | Jefe de Departamento | Colaborador |
+  |---|---|---|---|
+  | **Colaboradores:** listar y ver | ✅ Todos los departamentos | ✅ Su departamento, ficha completa | 🔸 Su departamento, solo nombre, apellido, cargo y correo de los activos |
+  | **Cargos y funciones:** ver | ✅ Todos | ✅ Los de su departamento | 🔸 Solo su propio cargo |
+  | **Mi perfil:** ver | ✅ El propio | ✅ El propio | ✅ El propio |
+  | **Notas de crédito:** ver el módulo | ✅ | ✅ | ❌ |
+  | Notas: listar y ver el detalle | ✅ Todas | ✅ Las de su departamento | ❌ |
+  | Notas: crear solicitud | ❌ | ✅ Para su departamento | ❌ |
+  | Notas: aprobar o rechazar | ✅ Las que no solicitó él mismo | ❌ | ❌ |
+  | Notas: anular | ❌ | 🔸 Solo las propias y en estado pendiente | ❌ |
+  | Notas: ver el historial | ✅ Todas | ✅ Las de su departamento | ❌ |
+
+  Módulos visibles por rol (sección 3.3): el Administrador y el Jefe de Departamento ven los cuatro; el Colaborador ve tres (Colaboradores, Cargos y funciones, y Mi perfil).
+
+- **Cómo se resuelven los puntos que el enunciado deja abiertos:**
+  - **"Información limitada" del colaborador:** el directorio de su departamento con datos de contacto, su propio cargo y su perfil. No ve datos como la fecha de ingreso o el país de sus compañeros.
+  - **Solicitud de notas de crédito:** el colaborador no puede crear solicitudes, para respetar el acceso de solo lectura que define la sección 3.2. Las solicita el Jefe de Departamento.
+  - **Aprobación:** la aprueba o rechaza el Administrador. Así se cumple estructuralmente que el aprobador pertenece a un rol distinto del solicitante (sección 3.4).
+  - **Recursos fuera de alcance:** responden **403** cuando el rol no tiene acceso al módulo o a la acción, y **404** cuando el recurso pertenece a otro departamento, para no revelar que existe.
+- **Implementación:**
+  - Una dependencia de FastAPI resuelve en cada petición el usuario autenticado, su rol y su departamento, leídos de la base de datos (ver [S2](#s2-mecanismo-de-sesión)).
+  - Cada endpoint declara qué roles acepta, y las consultas filtran por departamento cuando el rol es Jefe de Departamento o Colaborador.
+  - Las respuestas del Colaborador usan modelos `*Public` reducidos, que solo exponen los campos permitidos.
+  - El frontend oculta los módulos y acciones no permitidos solo como experiencia de usuario: la seguridad real está en el backend.
+  - **Defensa en profundidad:** además de la matriz, la base de datos impide que el resolutor de una nota sea quien la solicitó (`CHECK`), aunque una regla del backend fallara.
 - **Alternativas consideradas:**
-- **Motivo:**
+  - **El Colaborador solicita y aprueba el Jefe de su departamento** (y si solicita el Jefe, aprueba el Administrador): un flujo más rico, pero contradice el acceso de solo lectura del Colaborador.
+  - **El Administrador también puede crear solicitudes:** se descartó para que su rol sea supervisar y aprobar.
+  - **El Jefe ve notas de otros departamentos:** se descartó para mantener el mismo alcance por departamento en todo el portal.
+- **Motivo:** la matriz cumple literalmente las definiciones de roles de la sección 3.2 y la segregación de funciones de la sección 3.4, con un flujo de aprobación de un solo nivel, fácil de verificar con tests: cada celda de la matriz corresponde a un caso de prueba.
 - **Contras asumidos:**
+  - El Administrador es el único aprobador posible, así que puede convertirse en un cuello de botella.
+  - El Colaborador no puede iniciar solicitudes, aunque en una operación real podría detectar la necesidad de una nota de crédito.
+- **En un despliegue real:** niveles de aprobación según el monto, delegación temporal de la aprobación (por ejemplo, durante vacaciones) y permisos configurables por base de datos en lugar de definidos en el código.
 
 ## 5. Limitaciones conocidas y mejoras futuras
