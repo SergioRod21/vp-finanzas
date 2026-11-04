@@ -5,6 +5,7 @@ import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
 import { NotasCreditoRoute } from '@/app/routes/notas-credito/lista'
+import { NuevaNotaCreditoRoute } from '@/app/routes/notas-credito/nueva'
 import { ErrorRuta } from '@/components/feedback/error-ruta'
 import { ModuloEnConstruccion } from '@/components/feedback/modulo-en-construccion'
 import { LayoutPrincipal } from '@/components/layout/layout-principal'
@@ -69,10 +70,7 @@ const router = createBrowserRouter([
                       {
                         element: <RutaAutorizada permitido={puedeCrearNota} />,
                         children: [
-                          {
-                            path: paths.notasCredito.nueva,
-                            element: <ModuloEnConstruccion titulo="Nueva solicitud de nota de crédito" />,
-                          },
+                          { path: paths.notasCredito.nueva, element: <NuevaNotaCreditoRoute /> },
                         ],
                       },
                       {
