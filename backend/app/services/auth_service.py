@@ -26,10 +26,12 @@ def _a_usuario_actual(
 ) -> UsuarioActual:
     return UsuarioActual(
         usuario_id=usuario.usuario_id,
+        colaborador_id=colaborador.colaborador_id,
         correo=colaborador.correo,
         nombre=colaborador.nombre,
         apellido=colaborador.apellido,
         rol=rol.nombre,
+        cargo_id=colaborador.cargo_id,
         departamento_id=departamento.departamento_id,
         departamento=departamento.nombre,
     )

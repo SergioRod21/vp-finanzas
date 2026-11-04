@@ -2,7 +2,7 @@
 
 Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, acceso por rol y departamento, y un proceso de negocio con auditoría.
 
-> Proyecto en desarrollo. Por ahora están disponibles la base de datos y la base de la API.
+> Proyecto en desarrollo. Disponibles: base de datos, autenticación y los módulos de consulta de la API (Mi perfil, Colaboradores, Cargos y funciones).
 
 ## Requisitos
 
@@ -96,9 +96,19 @@ docker compose down -v   # borra el volumen y TODOS los datos
 docker compose up -d --build
 ```
 
-## Tests del backend
+## API
 
-Los tests no necesitan la base de datos: reemplazan la sesión por una falsa.
+Todos los endpoints, salvo `health` y `login`, requieren sesión. Qué ve cada rol está definido en la matriz de permisos (decisión S3 en [decisiones técnicas](docs/decisiones-tecnicas.md)). Un recurso de otro departamento responde 404.
+
+| Endpoint | Administrador | Jefe de Departamento | Colaborador |
+|---|---|---|---|
+| `GET /api/health` | Público | Público | Público |
+| `POST /api/auth/login` · `POST /api/auth/logout` · `GET /api/auth/me` | ✅ | ✅ | ✅ |
+| `GET /api/perfil` | Su perfil | Su perfil | Su perfil |
+| `GET /api/colaboradores[?departamento_id=]` · `GET /api/colaboradores/{id}` | Todos, ficha completa | Su departamento, ficha completa | Compañeros activos de su departamento, solo datos de contacto |
+| `GET /api/cargos[?departamento_id=]` · `GET /api/cargos/{id}` | Todos | Su departamento | Solo su cargo |
+
+## Tests del backend
 
 ```bash
 cd backend
@@ -106,6 +116,16 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest
 ```
+
+- **Tests unitarios:** no necesitan la base de datos; reemplazan la sesión y los servicios por versiones falsas.
+- **Tests de integración** (`tests/integration/`): verifican la matriz de permisos contra PostgreSQL real, autenticándose con los usuarios de prueba. Se omiten salvo que se indique `RUN_INTEGRATION=1`. Con los contenedores levantados:
+
+  ```bash
+  set -a; source ../.env; set +a
+  RUN_INTEGRATION=1 \
+  DATABASE_URL="postgresql+psycopg://$APP_DB_USER:$APP_DB_PASSWORD@localhost:${DB_PORT:-5432}/$POSTGRES_DB" \
+  pytest
+  ```
 
 ## Documentación
 

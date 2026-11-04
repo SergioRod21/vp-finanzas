@@ -14,10 +14,12 @@ from tests.conftest import FakeSession
 
 JEFE = UsuarioActual(
     usuario_id=3,
+    colaborador_id=11,
     correo="ricardo.palencia@vpfinanzas.example",
     nombre="Ricardo",
     apellido="Palencia",
     rol="Jefe de Departamento",
+    cargo_id=5,
     departamento_id=2,
     departamento="Tesorería",
 )
