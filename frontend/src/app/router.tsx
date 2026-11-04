@@ -8,9 +8,11 @@ import { ColaboradoresRoute } from '@/app/routes/colaboradores'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
+import { DetalleNotaCreditoRoute } from '@/app/routes/notas-credito/detalle'
+import { NotasCreditoRoute } from '@/app/routes/notas-credito/lista'
+import { NuevaNotaCreditoRoute } from '@/app/routes/notas-credito/nueva'
 import { PerfilRoute } from '@/app/routes/perfil'
 import { ErrorRuta } from '@/components/feedback/error-ruta'
-import { ModuloEnConstruccion } from '@/components/feedback/modulo-en-construccion'
 import { LayoutPrincipal } from '@/components/layout/layout-principal'
 import { paths } from '@/config/paths'
 import { RutaAutorizada, RutaModulo } from '@/lib/auth/ruta-autorizada'
@@ -66,20 +68,14 @@ const router = createBrowserRouter([
                   {
                     element: <RutaModulo modulo="notasCredito" />,
                     children: [
-                      { path: paths.notasCredito.lista, element: <ModuloEnConstruccion titulo="Notas de crédito" /> },
+                      { path: paths.notasCredito.lista, element: <NotasCreditoRoute /> },
                       {
                         element: <RutaAutorizada permitido={puedeCrearNota} />,
                         children: [
-                          {
-                            path: paths.notasCredito.nueva,
-                            element: <ModuloEnConstruccion titulo="Nueva solicitud de nota de crédito" />,
-                          },
+                          { path: paths.notasCredito.nueva, element: <NuevaNotaCreditoRoute /> },
                         ],
                       },
-                      {
-                        path: paths.notasCredito.patronDetalle,
-                        element: <ModuloEnConstruccion titulo="Detalle de la nota de crédito" />,
-                      },
+                      { path: paths.notasCredito.patronDetalle, element: <DetalleNotaCreditoRoute /> },
                     ],
                   },
                 ],
