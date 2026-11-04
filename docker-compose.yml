@@ -1,5 +1,5 @@
 # Configuración base del proyecto.
-# Uso:  cp .env.example .env   (completar las contraseñas)
+# Uso:  cp .env.example .env   (los valores de ejemplo sirven para desarrollo local)
 #       docker compose up -d --build
 
 services:
@@ -44,9 +44,21 @@ services:
       db:
         condition: service_healthy   # espera a que PostgreSQL acepte conexiones
     networks:
-      - backend_net
-    # Sin "ports": en la configuración base el backend no se publica en el host.
-    # Más adelante el frontend (nginx) le reenviará /api por una red propia.
+      - backend_net    # para llegar a la base de datos
+      - frontend_net   # para recibir las peticiones /api que reenvía nginx
+    # Sin "ports": el backend no se publica en el host. Se accede a través del frontend.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy   # nginx reenvía /api al backend
+    networks:
+      - frontend_net
+    # Único servicio publicado en el host, y solo en 127.0.0.1.
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
 
 volumes:
   pgdata:
@@ -55,3 +67,5 @@ networks:
   # Red entre el backend y la base de datos: sin salida a internet.
   backend_net:
     internal: true
+  # Red entre el frontend (nginx) y el backend. La base de datos no está en ella.
+  frontend_net:

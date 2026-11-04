@@ -13,7 +13,7 @@ from tests.integration.conftest import CORREOS
 
 pytestmark = pytest.mark.integration
 
-CAMPOS_RESUMEN = {"colaborador_id", "nombre", "apellido", "correo", "cargo"}
+CAMPOS_RESUMEN = {"colaborador_id", "nombre", "apellido", "correo", "cargo_id", "cargo"}
 
 
 @pytest.fixture(scope="module")

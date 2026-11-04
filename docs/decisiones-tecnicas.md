@@ -24,12 +24,21 @@
 
 ### 1.2 Frontend
 
-- **Decisión:** React, con Vite como herramienta de build y servidor de desarrollo.
-- **Alternativas consideradas:** Angular y Vue.
+- **Decisión:** React con TypeScript, compilado con Vite, y tres librerías de apoyo: React Router para el ruteo, TanStack Query para las llamadas a la API y Mantine para los componentes visuales y los formularios.
+- **Alternativas consideradas:**
+  - Framework: Angular, Vue y Next.js. Next.js se descartó porque su principal ventaja (renderizado en el servidor, SEO) no aplica a un portal interno detrás de un login, y agregaría un segundo servidor que duplica responsabilidades del backend.
+  - Llamadas a la API: `fetch` con `useEffect` en cada pantalla, SWR y los *loaders* de React Router.
+  - Componentes: MUI, Ant Design y shadcn/ui.
 - **Motivo:**
-  - **Experiencia previa:** es el framework que más manejo. Con un plazo acotado, conviene invertir el tiempo en la lógica del portal y no en aprender una herramienta nueva.
-  - **Vite** compila rápido y su servidor de desarrollo permite redirigir las llamadas a `/api` hacia el backend. Así el frontend usa rutas relativas desde el principio, sin direcciones del backend escritas en el código.
-- **Contras asumidos:** React es una librería de interfaz, no un framework completo como Angular. El ruteo, las llamadas HTTP y los formularios requieren elegir librerías adicionales (por ejemplo, React Router).
+  - **Experiencia previa:** React es el framework que más manejo. Con un plazo acotado, conviene invertir el tiempo en la lógica del portal y no en aprender una herramienta nueva.
+  - **Vite** compila rápido y su servidor de desarrollo redirige `/api` al backend, como lo hace nginx en Docker. El frontend usa rutas relativas y comparte origen con la API, así que la cookie de sesión funciona sin CORS.
+  - **TanStack Query** maneja la carga, los errores, la caché y la recarga de datos después de cada acción (por ejemplo, el listado y el detalle de una nota se actualizan al aprobarla). Escribir eso a mano con `useEffect` en cada pantalla repite código y es una fuente común de errores, como respuestas que llegan desordenadas.
+  - **Mantine** trae listos los componentes que un portal administrativo usa todo el tiempo (tablas, formularios, modales, notificaciones), con una API simple y un tema configurable con los colores de la marca.
+- **Arquitectura:** estructura por funcionalidades (*features*), basada en bulletproof-react:
+  - `app/` compone la aplicación (router y pantallas); `features/` tiene un módulo por funcionalidad (perfil, colaboradores, cargos, notas de crédito); `components/`, `lib/`, `hooks/` y `utils/` son compartidos.
+  - Las importaciones van en una sola dirección (compartido → features → app) y **una feature nunca importa de otra**.
+  - Solo `lib/api-client.ts` llama a `fetch`; la matriz de permisos (S3) vive en `lib/authorization.ts`, y el frontend la usa solo para ocultar lo que no corresponde: la seguridad real está en el backend.
+- **Contras asumidos:** React es una librería de interfaz, no un framework completo como Angular: el ruteo, el estado del servidor y los formularios dependen de librerías elegidas aparte, que hay que mantener actualizadas.
 
 ### 1.3 Base de datos
 

@@ -35,6 +35,7 @@ def _a_ficha(c: ColaboradorConDetalle) -> ColaboradorFicha:
         nombre=c.colaborador.nombre,
         apellido=c.colaborador.apellido,
         correo=c.colaborador.correo,
+        cargo_id=c.cargo.cargo_id,
         cargo=c.cargo.titulo,
         pais=c.pais.nombre,
         fecha_ingreso=c.colaborador.fecha_ingreso,
@@ -51,6 +52,7 @@ def _a_resumen(c: ColaboradorConDetalle) -> ColaboradorResumen:
         nombre=c.colaborador.nombre,
         apellido=c.colaborador.apellido,
         correo=c.colaborador.correo,
+        cargo_id=c.cargo.cargo_id,
         cargo=c.cargo.titulo,
     )
 
