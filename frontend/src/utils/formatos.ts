@@ -4,17 +4,21 @@
  * Los formateadores de Intl se crean una sola vez: construirlos en cada llamada es costoso.
  */
 
-const LOCALE = 'es'
+/** Convenciones de Venezuela: punto de miles, coma decimal y hora con "a. m." / "p. m.". */
+const LOCALE = 'es-VE'
 
 /**
- * Moneda de los montos de las notas de crédito. El backend no envía la moneda
+ * Símbolo de la moneda de los montos: bolívares. El backend no envía la moneda
  * (nota_credito.monto es NUMERIC sin unidad), así que se define aquí, una sola vez.
+ *
+ * Se antepone a mano porque Intl (datos de CLDR) muestra la moneda VES como "Bs.S",
+ * el símbolo del bolívar soberano anterior, y no "Bs.", el que se usa actualmente.
  */
-const MONEDA = 'USD'
+const SIMBOLO_MONEDA = 'Bs.'
 
 const formatoFecha = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'medium' })
 const formatoFechaHora = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'medium', timeStyle: 'short' })
-const formatoMonto = new Intl.NumberFormat(LOCALE, { style: 'currency', currency: MONEDA })
+const formatoMonto = new Intl.NumberFormat(LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const SOLO_FECHA = /^(\d{4})-(\d{2})-(\d{2})$/
 const NUMERO_DECIMAL = /^-?\d+(\.\d+)?$/
@@ -33,13 +37,13 @@ function aFecha(valor: string): Date {
   return new Date(valor)
 }
 
-/** "2026-10-06" o "2026-10-06T13:15:00Z" → "6 oct 2026". Si el valor no es una fecha, lo devuelve tal cual. */
+/** "2026-10-06" o "2026-10-06T13:15:00Z" → "6 oct. 2026". Si el valor no es una fecha, lo devuelve tal cual. */
 export function formatearFecha(valor: string): string {
   const fecha = aFecha(valor)
   return Number.isNaN(fecha.getTime()) ? valor : formatoFecha.format(fecha)
 }
 
-/** "2026-10-06T13:15:00Z" → "6 oct 2026, 9:15" (en la zona horaria del navegador). */
+/** "2026-10-06T13:15:00Z" → "6 oct. 2026, 9:15 a. m." (en la zona horaria del navegador). */
 export function formatearFechaHora(valor: string): string {
   const fecha = aFecha(valor)
   return Number.isNaN(fecha.getTime()) ? valor : formatoFechaHora.format(fecha)
@@ -50,9 +54,9 @@ function esNumeroDecimal(valor: string): valor is `${number}` {
 }
 
 /**
- * Monto en moneda: "1250.00" → "1250,00 US$". Los montos llegan de la API como texto;
+ * Monto en bolívares: "1250.00" → "Bs. 1.250,00". Los montos llegan de la API como texto;
  * Intl los formatea a partir del texto, sin pasar por number, así que no pierden precisión.
  */
 export function formatearMonto(monto: string): string {
-  return esNumeroDecimal(monto) ? formatoMonto.format(monto) : monto
+  return esNumeroDecimal(monto) ? `${SIMBOLO_MONEDA} ${formatoMonto.format(monto)}` : monto
 }
