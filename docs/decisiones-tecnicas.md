@@ -51,10 +51,25 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ## 3. Proceso de negocio (sección 3.4)
 
-- **Decisión:**
-- **Alternativas consideradas:**
+- **Decisión:** opción 2, flujo de aprobación de notas de crédito.
+- **Alternativas consideradas:** opción 1 (detector de anomalías en cierres de caja) y un proceso propio.
 - **Motivo:**
+  - **Relevancia para el negocio:** el contexto del enunciado nombra los procesos de aprobación entre las tareas diarias del equipo de Transformación Financiera. Una nota de crédito reduce lo que un cliente debe, así que mueve dinero: es justo el tipo de operación que una organización financiera no permite ejecutar a una sola persona.
+  - **Lógica de negocio que no es CRUD:** el valor del módulo está en sus reglas:
+    - Una **máquina de estados** que solo permite transiciones válidas (por ejemplo, una nota aprobada o rechazada no vuelve a cambiar).
+    - **Segregación de funciones:** quien solicita no puede aprobar, y el aprobador debe tener un rol distinto.
+    - **Autorización contextual:** no basta con el rol; también importan el departamento del usuario y su relación con la solicitud.
+  - **Experiencia previa:** he trabajado con máquinas de estados y con funcionalidades segmentadas por rol, que son el núcleo de este proceso. Eso me permite concentrar el tiempo en diseñar bien las reglas y sus pruebas, y no en aprender el patrón.
+  - **Auditoría en base de datos:** cada acción queda registrada en una tabla de eventos (quién, cuándo, estado anterior, estado nuevo y comentario), escrita en la misma transacción que el cambio de estado. Es un tipo de registro con el que tengo experiencia, y cumple directamente el requisito de historial visible.
+  - **Simplicidad del esquema:** el proceso reutiliza las entidades que ya existen (`usuario`, `rol`, `departamento` y la relación `colaborador → cargo → departamento`) y solo agrega la tabla de notas y la de eventos. El módulo funcional y el control de acceso por rol y departamento (sección 3.2) terminan siendo la misma pieza, en lugar de dos desarrollos separados.
+  - **Por qué no la opción 1:** su lógica principal son algoritmos de detección (umbrales, transposición de dígitos, reincidencia), un ejercicio valioso pero que necesita entidades ajenas a la estructura de la VP de Finanzas (tiendas, cajeros y cierres) y se relaciona poco con el control de acceso por departamento que ya está modelado. El esquema crecería más y el módulo quedaría desconectado del resto del portal.
+  - **Por qué no un proceso propio:** las opciones del enunciado ya cubren el nivel de exigencia esperado. Proponer otro proceso agregaba el riesgo de tener que demostrar que es equivalente, sin un beneficio claro.
+- **Alcance:**
+  - Incluido: crear solicitudes, consultarlas según el alcance del rol, aprobarlas, rechazarlas o anularlas con reglas de transición explícitas, e historial completo de auditoría.
+  - Fuera del alcance: la integración con un sistema de facturación real, la emisión contable de la nota y los niveles de aprobación según el monto (posible mejora futura).
 - **Contras asumidos:**
+  - El valor del módulo depende de que las reglas estén bien diseñadas y probadas. Si la máquina de estados o los permisos se implementan de forma superficial, el proceso se reduce a un CRUD con un campo de estado.
+  - Requiere prever aprobaciones concurrentes: dos aprobadores actuando sobre la misma nota al mismo tiempo.
 
 ## 4. Decisiones de seguridad
 
@@ -69,16 +84,69 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ### S2. Mecanismo de sesión
 
-- **Decisión:**
+- **Decisión:** JWT firmado, enviado en una cookie `httpOnly`. `POST /api/auth/login` valida las credenciales y emite la cookie; el navegador la reenvía en cada petición y una dependencia de FastAPI la valida.
 - **Alternativas consideradas:**
+  - **Sesión en servidor** (ID opaco en cookie y tabla de sesiones en PostgreSQL): revocación total e inmediata, pero agrega una tabla y su limpieza periódica.
+  - **JWT Bearer en el header `Authorization`:** estándar en APIs públicas, pero el frontend tendría que guardar el token. En `localStorage` queda expuesto a XSS; solo en memoria, se pierde al recargar.
+  - **Cookie de sesión firmada** (`SessionMiddleware` de Starlette): muy simple, pero su contenido es legible, no permite revocación y está pensada para aplicaciones renderizadas en el servidor.
+  - **JWT de acceso con refresh token:** combina ausencia de estado y revocación, pero su complejidad (dos tokens, endpoint de renovación, reintentos en el frontend) es excesiva para el alcance del portal.
+  - **Proveedor de identidad externo** (OAuth2/OIDC): fuera del alcance, porque el enunciado pide un login propio.
 - **Motivo:**
+  - **Protección contra XSS:** JavaScript no puede leer una cookie `httpOnly`, así que un script inyectado no puede robar el token.
+  - **Protección contra CSRF:** con `SameSite=Strict` y el frontend y la API en el mismo origen (nginx en producción, proxy de Vite en desarrollo), otro sitio no puede hacer que el navegador envíe la cookie.
+  - **Sin estado en la base de datos:** no requiere tablas nuevas, lo que mantiene simple el esquema.
+  - **Frontend más simple:** el navegador envía la cookie automáticamente; el código de React no guarda ni adjunta tokens.
+- **Implementación:**
+  - El token solo contiene el identificador del usuario (`sub`) y su expiración (`exp`). **No incluye el rol ni el departamento.**
+  - En cada petición, el backend lee de la base de datos el usuario, su rol, su departamento y los dos indicadores `activo` (de `usuario` y de `colaborador`). Así, un cambio de rol o una desactivación se aplican en la siguiente petición, sin esperar a que el token expire. Es la misma consulta que necesita el control de acceso por departamento (S3).
+  - Expiración corta, de 30 a 60 minutos.
+  - Atributos de la cookie: `httpOnly`, `SameSite=Strict` y `Path=/api`, más `Secure` cuando se sirve por HTTPS.
+  - Firma HS256 con la librería PyJWT. El secreto se lee de la variable de entorno `JWT_SECRET` y nunca está en el código.
+  - El logout borra la cookie.
 - **Contras asumidos:**
+  - **Revocación incompleta:** un JWT es válido hasta que expira. Si alguien copiara el token antes del logout, podría usarlo hasta su vencimiento. La expiración corta y `httpOnly` reducen este riesgo, y la lectura del usuario en cada petición bloquea de inmediato a los usuarios desactivados.
+  - Si la API tuviera que servir a clientes de otro origen (por ejemplo, una app móvil), habría que revisar `SameSite` y agregar protección explícita contra CSRF.
+- **En un despliegue real:** pasar a sesiones en servidor, o a tokens de acceso cortos con refresh tokens revocables, para tener revocación inmediata; servir siempre por HTTPS con `Secure`; y rotar `JWT_SECRET` periódicamente.
 
 ### S3. Control de acceso por rol y departamento
 
-- **Decisión:**
+- **Decisión:** el acceso se define con la siguiente matriz de permisos, y el backend la verifica en cada endpoint según el rol del usuario y su departamento (`colaborador → cargo → departamento`).
+
+  ✅ permitido · 🔸 permitido con límites · ❌ no permitido
+
+  | Módulo / acción | Administrador | Jefe de Departamento | Colaborador |
+  |---|---|---|---|
+  | **Colaboradores:** listar y ver | ✅ Todos los departamentos | ✅ Su departamento, ficha completa | 🔸 Su departamento, solo nombre, apellido, cargo y correo de los activos |
+  | **Cargos y funciones:** ver | ✅ Todos | ✅ Los de su departamento | 🔸 Solo su propio cargo |
+  | **Mi perfil:** ver | ✅ El propio | ✅ El propio | ✅ El propio |
+  | **Notas de crédito:** ver el módulo | ✅ | ✅ | ❌ |
+  | Notas: listar y ver el detalle | ✅ Todas | ✅ Las de su departamento | ❌ |
+  | Notas: crear solicitud | ❌ | ✅ Para su departamento | ❌ |
+  | Notas: aprobar o rechazar | ✅ Las que no solicitó él mismo | ❌ | ❌ |
+  | Notas: anular | ❌ | 🔸 Solo las propias y en estado pendiente | ❌ |
+  | Notas: ver el historial | ✅ Todas | ✅ Las de su departamento | ❌ |
+
+  Módulos visibles por rol (sección 3.3): el Administrador y el Jefe de Departamento ven los cuatro; el Colaborador ve tres (Colaboradores, Cargos y funciones, y Mi perfil).
+
+- **Cómo se resuelven los puntos que el enunciado deja abiertos:**
+  - **"Información limitada" del colaborador:** el directorio de su departamento con datos de contacto, su propio cargo y su perfil. No ve datos como la fecha de ingreso o el país de sus compañeros.
+  - **Solicitud de notas de crédito:** el colaborador no puede crear solicitudes, para respetar el acceso de solo lectura que define la sección 3.2. Las solicita el Jefe de Departamento.
+  - **Aprobación:** la aprueba o rechaza el Administrador. Así se cumple estructuralmente que el aprobador pertenece a un rol distinto del solicitante (sección 3.4).
+  - **Recursos fuera de alcance:** responden **403** cuando el rol no tiene acceso al módulo o a la acción, y **404** cuando el recurso pertenece a otro departamento, para no revelar que existe.
+- **Implementación:**
+  - Una dependencia de FastAPI resuelve en cada petición el usuario autenticado, su rol y su departamento, leídos de la base de datos (ver [S2](#s2-mecanismo-de-sesión)).
+  - Cada endpoint declara qué roles acepta, y las consultas filtran por departamento cuando el rol es Jefe de Departamento o Colaborador.
+  - Las respuestas del Colaborador usan modelos `*Public` reducidos, que solo exponen los campos permitidos.
+  - El frontend oculta los módulos y acciones no permitidos solo como experiencia de usuario: la seguridad real está en el backend.
+  - **Defensa en profundidad:** además de la matriz, la base de datos impide que el resolutor de una nota sea quien la solicitó (`CHECK`), aunque una regla del backend fallara.
 - **Alternativas consideradas:**
-- **Motivo:**
+  - **El Colaborador solicita y aprueba el Jefe de su departamento** (y si solicita el Jefe, aprueba el Administrador): un flujo más rico, pero contradice el acceso de solo lectura del Colaborador.
+  - **El Administrador también puede crear solicitudes:** se descartó para que su rol sea supervisar y aprobar.
+  - **El Jefe ve notas de otros departamentos:** se descartó para mantener el mismo alcance por departamento en todo el portal.
+- **Motivo:** la matriz cumple literalmente las definiciones de roles de la sección 3.2 y la segregación de funciones de la sección 3.4, con un flujo de aprobación de un solo nivel, fácil de verificar con tests: cada celda de la matriz corresponde a un caso de prueba.
 - **Contras asumidos:**
+  - El Administrador es el único aprobador posible, así que puede convertirse en un cuello de botella.
+  - El Colaborador no puede iniciar solicitudes, aunque en una operación real podría detectar la necesidad de una nota de crédito.
+- **En un despliegue real:** niveles de aprobación según el monto, delegación temporal de la aprobación (por ejemplo, durante vacaciones) y permisos configurables por base de datos en lugar de definidos en el código.
 
 ## 5. Limitaciones conocidas y mejoras futuras
