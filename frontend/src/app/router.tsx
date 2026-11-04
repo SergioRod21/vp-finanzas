@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router/dom'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
+import { DetalleNotaCreditoRoute } from '@/app/routes/notas-credito/detalle'
 import { NotasCreditoRoute } from '@/app/routes/notas-credito/lista'
 import { NuevaNotaCreditoRoute } from '@/app/routes/notas-credito/nueva'
 import { ErrorRuta } from '@/components/feedback/error-ruta'
@@ -73,10 +74,7 @@ const router = createBrowserRouter([
                           { path: paths.notasCredito.nueva, element: <NuevaNotaCreditoRoute /> },
                         ],
                       },
-                      {
-                        path: paths.notasCredito.patronDetalle,
-                        element: <ModuloEnConstruccion titulo="Detalle de la nota de crédito" />,
-                      },
+                      { path: paths.notasCredito.patronDetalle, element: <DetalleNotaCreditoRoute /> },
                     ],
                   },
                 ],
