@@ -1,6 +1,6 @@
 # Configuración base del proyecto.
 # Uso:  cp .env.example .env   (completar las contraseñas)
-#       docker compose up -d db
+#       docker compose up -d --build
 
 services:
   db:
@@ -28,10 +28,25 @@ services:
     networks:
       - backend_net
 
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      # Se conecta como el usuario de la aplicación (privilegios mínimos), nunca como el administrador.
+      # El host es "db": el nombre del servicio dentro de la red de Docker.
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER:?Definir APP_DB_USER en .env}:${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}@db:5432/${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+    depends_on:
+      db:
+        condition: service_healthy   # espera a que PostgreSQL acepte conexiones
+    networks:
+      - backend_net
+    # Sin "ports": en la configuración base el backend no se publica en el host.
+    # Más adelante el frontend (nginx) le reenviará /api por una red propia.
+
 volumes:
   pgdata:
 
 networks:
-  # Red de la capa de datos: sin salida a internet. Solo el backend se unirá a ella.
+  # Red entre el backend y la base de datos: sin salida a internet.
   backend_net:
     internal: true
