@@ -1,8 +1,10 @@
 import os
 
-# app.core.config exige DATABASE_URL al importarse. Los tests no se conectan a
+# app.core.config exige estas variables al importarse. Los tests no se conectan a
 # PostgreSQL: la sesión se reemplaza por una falsa con dependency_overrides.
+os.environ.setdefault("APP_ENV", "development")
 os.environ.setdefault("DATABASE_URL", "postgresql+psycopg://test:test@localhost:5432/test")
+os.environ.setdefault("JWT_SECRET", "secreto-de-tests-con-longitud-suficiente-0123456789")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

@@ -99,7 +99,7 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 - **Implementación:**
   - El token solo contiene el identificador del usuario (`sub`) y su expiración (`exp`). **No incluye el rol ni el departamento.**
   - En cada petición, el backend lee de la base de datos el usuario, su rol, su departamento y los dos indicadores `activo` (de `usuario` y de `colaborador`). Así, un cambio de rol o una desactivación se aplican en la siguiente petición, sin esperar a que el token expire. Es la misma consulta que necesita el control de acceso por departamento (S3).
-  - Expiración corta, de 30 a 60 minutos.
+  - Expiración de 60 minutos, configurable con `JWT_EXPIRE_MINUTES` (entre 5 y 1440).
   - Atributos de la cookie: `httpOnly`, `SameSite=Strict` y `Path=/api`, más `Secure` cuando se sirve por HTTPS.
   - Firma HS256 con la librería PyJWT. El secreto se lee de la variable de entorno `JWT_SECRET` y nunca está en el código.
   - El logout borra la cookie.
@@ -149,4 +149,32 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
   - El Colaborador no puede iniciar solicitudes, aunque en una operación real podría detectar la necesidad de una nota de crédito.
 - **En un despliegue real:** niveles de aprobación según el monto, delegación temporal de la aprobación (por ejemplo, durante vacaciones) y permisos configurables por base de datos en lugar de definidos en el código.
 
+### S4. Secretos de desarrollo y usuarios de demostración
+
+- **Decisión:** `.env.example` incluye valores funcionales para el entorno de desarrollo local, de modo que el proyecto se levante con `cp .env.example .env` y `docker compose up -d --build`. Los usuarios de demostración, uno o más por rol, se crean con una contraseña común definida en `SEED_USER_PASSWORD` y se documentan en el README.
+- **Distinción entre dos tipos de credenciales:**
+
+  | Tipo | Ejemplos | Tratamiento |
+  |---|---|---|
+  | **Secretos de infraestructura** | `POSTGRES_PASSWORD`, `APP_DB_PASSWORD`, `JWT_SECRET` | Se leen siempre del `.env`, que nunca se versiona. `.env.example` trae valores de desarrollo local, marcados como no aptos para otros entornos |
+  | **Credenciales de demostración** | La contraseña de los usuarios de prueba | Son datos ficticios, como los nombres y correos del seed. Se documentan para que cualquiera pueda probar el portal con cada rol |
+
+- **Alternativas consideradas:**
+  - **`SEED_USER_PASSWORD` obligatoria y sin valor de ejemplo:** obliga a quien clona el repositorio a definir contraseñas antes del primer arranque. Complica probar la aplicación sin aportar seguridad real a datos ficticios.
+  - **Script de setup que genera secretos aleatorios:** mejor higiene, pero agrega un paso y un script que mantener. Queda como mejora opcional.
+  - **Valores por defecto dentro de `docker-compose.yml`** (`${VAR:-valor}`): los valores quedan en un archivo versionado y se usan en silencio si falta la variable.
+  - **Hashes de contraseña fijos en el SQL:** funciona, pero la contraseña quedaría fija para siempre y no podría cambiarse sin editar el script.
+  - **Contraseñas generadas en el primer arranque y mostradas en los logs:** seguras, pero incómodas para quien evalúa el proyecto.
+- **Motivo:** el proyecto se puede probar en dos comandos, sin editar ningún archivo, y el requisito 4.6 del enunciado se mantiene: los secretos se leen de variables de entorno, `.env` está excluido de Git y ningún secreto está escrito en el código de la aplicación.
+- **Implementación:**
+  - Los usuarios de demostración se crean en SQL (`db/05-seed-usuarios.sql`) con la extensión `pgcrypto` de PostgreSQL (`crypt(..., gen_salt('bf'))`). Los hashes bcrypt que genera son compatibles con la librería `bcrypt` que usa el backend para verificar el login. La contraseña se lee de `SEED_USER_PASSWORD` con `\getenv`, igual que `00-app-user.sql`.
+  - Cada valor de `.env.example` lleva la advertencia de que solo sirve para desarrollo local.
+  - **Salvaguarda:** con `APP_ENV=production`, el backend se niega a arrancar si `JWT_SECRET` conserva el valor de ejemplo o es demasiado corto.
+- **Contras asumidos:**
+  - Los valores de `.env.example` son públicos. Si alguien los usara fuera de su máquina, cualquiera podría conocerlos. La salvaguarda del backend y las advertencias reducen ese riesgo.
+  - Todos los usuarios de demostración comparten la misma contraseña.
+- **En un despliegue real:** sin usuarios de demostración ni valores de ejemplo; secretos generados y almacenados en un gestor de secretos; los usuarios los crea un administrador y cada uno define su propia contraseña.
+
 ## 5. Limitaciones conocidas y mejoras futuras
+
+- **Sin límite de intentos de login:** no hay protección contra fuerza bruta (rate limiting ni bloqueo temporal tras varios intentos fallidos). En un despliegue real se agregaría en el backend o en el proxy.

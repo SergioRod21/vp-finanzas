@@ -11,21 +11,26 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
 
 ## Levantar el proyecto
 
-1. Crear el archivo de variables de entorno y completar las contraseñas:
+1. Crear el archivo de variables de entorno:
 
    ```bash
    cp .env.example .env
-   openssl rand -hex 24   # ejecutarlo una vez por cada contraseña
    ```
+
+   Los valores de `.env.example` funcionan tal cual para desarrollo local. **Son públicos: no los uses en ningún otro entorno** (ver la decisión S4 en [decisiones técnicas](docs/decisiones-tecnicas.md)).
 
    | Variable | Descripción |
    |---|---|
+   | `APP_ENV` | `development` o `production`. En `production`, el backend no arranca con el `JWT_SECRET` de ejemplo |
    | `POSTGRES_DB` | Nombre de la base de datos |
    | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Administrador. Solo inicializa la base de datos |
    | `APP_DB_USER` / `APP_DB_PASSWORD` | Usuario de la aplicación, con privilegios mínimos. Lo usa el backend |
+   | `JWT_SECRET` | Secreto para firmar las sesiones (mínimo 32 caracteres) |
+   | `JWT_EXPIRE_MINUTES` | Duración de la sesión en minutos (por defecto 60) |
+   | `SEED_USER_PASSWORD` | Contraseña común de los [usuarios de prueba](#usuarios-de-prueba) |
    | `DB_PORT` / `BACKEND_PORT` | Puertos del host en `127.0.0.1` (solo desarrollo) |
 
-   Los valores se eligen libremente: PostgreSQL crea la base de datos y los usuarios con ellos la primera vez que arranca. Usa contraseñas con solo letras y números (como las que genera `openssl rand -hex`), porque forman parte de la URL de conexión del backend.
+   Para usar valores propios, genéralos con `openssl rand -hex 32`. Las contraseñas de PostgreSQL deben tener solo letras, números y guiones bajos, porque forman parte de la URL de conexión del backend.
 
 2. Levantar los contenedores:
 
@@ -45,6 +50,8 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `02-seed.sql` | Datos ficticios: 4 departamentos y 40 colaboradores |
    | `03-notas-credito.sql` | Tablas del módulo de notas de crédito, con sus reglas de negocio |
    | `04-seed-notas-credito.sql` | Catálogo de motivos de nota de crédito |
+   | `05-seed-usuarios.sql` | Usuarios de prueba, con la contraseña de `SEED_USER_PASSWORD` |
+   | `06-seed-notas-credito-ejemplo.sql` | 8 notas de crédito de ejemplo en los cuatro estados, con su historial |
 
 3. Verificar:
 
@@ -56,6 +63,29 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    Documentación interactiva de la API (Swagger): <http://localhost:8000/docs>
 
 En desarrollo, el backend se recarga automáticamente al guardar cambios en `backend/app/`, sin reconstruir la imagen.
+
+## Usuarios de prueba
+
+Todos usan la contraseña definida en `SEED_USER_PASSWORD` (en `.env.example`: `Demo.Finanzas.2026`). El login es con el correo, en `POST /api/auth/login` (se puede probar desde <http://localhost:8000/docs>). La sesión queda en una cookie `httpOnly`; `GET /api/auth/me` devuelve el usuario autenticado y `POST /api/auth/logout` la cierra.
+
+| Rol | Correo | Departamento |
+|---|---|---|
+| Administrador | `andres.quintero@vpfinanzas.example` | Planificación Financiera |
+| Jefe de Departamento | `valeria.montiel@vpfinanzas.example` | Planificación Financiera |
+| Jefe de Departamento | `ricardo.palencia@vpfinanzas.example` | Tesorería |
+| Jefe de Departamento | `beatriz.oropeza@vpfinanzas.example` | Contraloría |
+| Jefe de Departamento | `patricia.velasquez@vpfinanzas.example` | Contabilidad |
+| Colaborador | `mariana.ochoa@vpfinanzas.example` | Planificación Financiera |
+| Colaborador | `elena.carvajal@vpfinanzas.example` | Tesorería |
+| Colaborador | `oscar.marcano@vpfinanzas.example` | Contraloría |
+| Colaborador | `manuel.alfonzo@vpfinanzas.example` | Contabilidad |
+
+Dos usuarios existen para probar que el login se rechaza:
+
+| Caso | Correo |
+|---|---|
+| Colaborador que ya no trabaja en la VP (colaborador inactivo) | `tomas.villalba@vpfinanzas.example` |
+| Acceso al portal desactivado (usuario inactivo) | `sofia.bracho@vpfinanzas.example` |
 
 ### Reiniciar la base de datos
 
