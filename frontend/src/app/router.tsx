@@ -2,13 +2,93 @@ import { createBrowserRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 
 import { InicioRoute } from '@/app/routes/inicio'
+import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
+import { ErrorRuta } from '@/components/feedback/error-ruta'
+import { ModuloEnConstruccion } from '@/components/feedback/modulo-en-construccion'
+import { LayoutPrincipal } from '@/components/layout/layout-principal'
 import { paths } from '@/config/paths'
+import { RutaAutorizada, RutaModulo } from '@/lib/auth/ruta-autorizada'
+import { RutaProtegida } from '@/lib/auth/ruta-protegida'
+import { RutaPublica } from '@/lib/auth/ruta-publica'
+import { puedeCrearNota } from '@/lib/authorization'
 
-/** Todas las rutas de la aplicación, en un solo lugar. */
+/**
+ * Todas las rutas de la aplicación, en un solo lugar.
+ *
+ * Las rutas sin path solo agrupan: RutaProtegida exige sesión, LayoutPrincipal pone el
+ * encabezado y el menú, y RutaModulo / RutaAutorizada exigen el permiso del rol.
+ * Para implementar una pantalla provisional, cambia solo su `element`.
+ */
 const router = createBrowserRouter([
-  { path: paths.inicio, element: <InicioRoute /> },
-  { path: '*', element: <NoEncontradoRoute /> },
+  {
+    // Errores fuera del layout (por ejemplo, en los guardias de sesión).
+    errorElement: <ErrorRuta />,
+    children: [
+      {
+        element: <RutaPublica />,
+        children: [{ path: paths.login, element: <LoginRoute /> }],
+      },
+      {
+        element: <RutaProtegida />,
+        children: [
+          {
+            element: <LayoutPrincipal />,
+            children: [
+              {
+                // Errores de una pantalla: se muestran dentro del layout, con el menú disponible.
+                errorElement: <ErrorRuta />,
+                children: [
+                  { path: paths.inicio, element: <InicioRoute /> },
+                  {
+                    element: <RutaModulo modulo="perfil" />,
+                    children: [{ path: paths.perfil, element: <ModuloEnConstruccion titulo="Mi perfil" /> }],
+                  },
+                  {
+                    element: <RutaModulo modulo="colaboradores" />,
+                    children: [
+                      { path: paths.colaboradores.lista, element: <ModuloEnConstruccion titulo="Colaboradores" /> },
+                      {
+                        path: paths.colaboradores.patronDetalle,
+                        element: <ModuloEnConstruccion titulo="Ficha del colaborador" />,
+                      },
+                    ],
+                  },
+                  {
+                    element: <RutaModulo modulo="cargos" />,
+                    children: [
+                      { path: paths.cargos.lista, element: <ModuloEnConstruccion titulo="Cargos y funciones" /> },
+                      { path: paths.cargos.patronDetalle, element: <ModuloEnConstruccion titulo="Detalle del cargo" /> },
+                    ],
+                  },
+                  {
+                    element: <RutaModulo modulo="notasCredito" />,
+                    children: [
+                      { path: paths.notasCredito.lista, element: <ModuloEnConstruccion titulo="Notas de crédito" /> },
+                      {
+                        element: <RutaAutorizada permitido={puedeCrearNota} />,
+                        children: [
+                          {
+                            path: paths.notasCredito.nueva,
+                            element: <ModuloEnConstruccion titulo="Nueva solicitud de nota de crédito" />,
+                          },
+                        ],
+                      },
+                      {
+                        path: paths.notasCredito.patronDetalle,
+                        element: <ModuloEnConstruccion titulo="Detalle de la nota de crédito" />,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      { path: '*', element: <NoEncontradoRoute /> },
+    ],
+  },
 ])
 
 export function AppRouter() {

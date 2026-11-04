@@ -1,28 +1,40 @@
-import { Badge, Card, Container, Group, Loader, Stack, Text, Title } from '@mantine/core'
-import { useQuery } from '@tanstack/react-query'
+import { Badge, Card, Group, SimpleGrid, Stack, Text, Title } from '@mantine/core'
+import { Link } from 'react-router'
 
-import { api } from '@/lib/api-client'
+import { EncabezadoPagina } from '@/components/layout/encabezado-pagina'
+import { entradasVisibles } from '@/config/modulos'
+import { useUsuarioAutenticado } from '@/lib/auth/usuario-actual'
 
-/** Pantalla temporal: comprueba que el frontend llega a la API a través del proxy. */
 export function InicioRoute() {
-  const salud = useQuery({
-    queryKey: ['health'],
-    queryFn: () => api<{ status: string }>('/health'),
-  })
+  const usuario = useUsuarioAutenticado()
 
   return (
-    <Container size="sm" py="xl">
-      <Stack>
-        <Title order={2}>VP Finanzas</Title>
-        <Card withBorder>
-          <Group justify="space-between">
-            <Text>Conexión con la API</Text>
-            {salud.isPending && <Loader size="sm" />}
-            {salud.isSuccess && <Badge color="teal">Disponible</Badge>}
-            {salud.isError && <Badge color="red">No disponible</Badge>}
-          </Group>
-        </Card>
+    <Stack gap="xl">
+      <Stack gap="xs">
+        <EncabezadoPagina titulo={`Hola, ${usuario.nombre}`} descripcion="Te damos la bienvenida al portal de la Vicepresidencia de Finanzas." />
+        <Group gap="xs">
+          <Badge variant="light">{usuario.rol}</Badge>
+          <Badge variant="outline">{usuario.departamento}</Badge>
+        </Group>
       </Stack>
-    </Container>
+
+      <Stack gap="sm">
+        <Title order={3} size="h4">
+          Accesos directos
+        </Title>
+        <SimpleGrid cols={{ base: 1, sm: 2 }}>
+          {entradasVisibles(usuario.rol).map((entrada) => (
+            <Card key={entrada.modulo} component={Link} to={entrada.ruta} withBorder padding="lg">
+              <Text fw={600} c="marca.8">
+                {entrada.etiqueta}
+              </Text>
+              <Text size="sm" c="dimmed">
+                {entrada.descripcion}
+              </Text>
+            </Card>
+          ))}
+        </SimpleGrid>
+      </Stack>
+    </Stack>
   )
 }
