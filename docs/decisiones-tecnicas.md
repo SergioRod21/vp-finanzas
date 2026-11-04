@@ -51,10 +51,25 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ## 3. Proceso de negocio (sección 3.4)
 
-- **Decisión:**
-- **Alternativas consideradas:**
+- **Decisión:** opción 2, flujo de aprobación de notas de crédito.
+- **Alternativas consideradas:** opción 1 (detector de anomalías en cierres de caja) y un proceso propio.
 - **Motivo:**
+  - **Relevancia para el negocio:** el contexto del enunciado nombra los procesos de aprobación entre las tareas diarias del equipo de Transformación Financiera. Una nota de crédito reduce lo que un cliente debe, así que mueve dinero: es justo el tipo de operación que una organización financiera no permite ejecutar a una sola persona.
+  - **Lógica de negocio que no es CRUD:** el valor del módulo está en sus reglas:
+    - Una **máquina de estados** que solo permite transiciones válidas (por ejemplo, una nota aprobada o rechazada no vuelve a cambiar).
+    - **Segregación de funciones:** quien solicita no puede aprobar, y el aprobador debe tener un rol distinto.
+    - **Autorización contextual:** no basta con el rol; también importan el departamento del usuario y su relación con la solicitud.
+  - **Experiencia previa:** he trabajado con máquinas de estados y con funcionalidades segmentadas por rol, que son el núcleo de este proceso. Eso me permite concentrar el tiempo en diseñar bien las reglas y sus pruebas, y no en aprender el patrón.
+  - **Auditoría en base de datos:** cada acción queda registrada en una tabla de eventos (quién, cuándo, estado anterior, estado nuevo y comentario), escrita en la misma transacción que el cambio de estado. Es un tipo de registro con el que tengo experiencia, y cumple directamente el requisito de historial visible.
+  - **Simplicidad del esquema:** el proceso reutiliza las entidades que ya existen (`usuario`, `rol`, `departamento` y la relación `colaborador → cargo → departamento`) y solo agrega la tabla de notas y la de eventos. El módulo funcional y el control de acceso por rol y departamento (sección 3.2) terminan siendo la misma pieza, en lugar de dos desarrollos separados.
+  - **Por qué no la opción 1:** su lógica principal son algoritmos de detección (umbrales, transposición de dígitos, reincidencia), un ejercicio valioso pero que necesita entidades ajenas a la estructura de la VP de Finanzas (tiendas, cajeros y cierres) y se relaciona poco con el control de acceso por departamento que ya está modelado. El esquema crecería más y el módulo quedaría desconectado del resto del portal.
+  - **Por qué no un proceso propio:** las opciones del enunciado ya cubren el nivel de exigencia esperado. Proponer otro proceso agregaba el riesgo de tener que demostrar que es equivalente, sin un beneficio claro.
+- **Alcance:**
+  - Incluido: crear solicitudes, consultarlas según el alcance del rol, aprobarlas, rechazarlas o anularlas con reglas de transición explícitas, e historial completo de auditoría.
+  - Fuera del alcance: la integración con un sistema de facturación real, la emisión contable de la nota y los niveles de aprobación según el monto (posible mejora futura).
 - **Contras asumidos:**
+  - El valor del módulo depende de que las reglas estén bien diseñadas y probadas. Si la máquina de estados o los permisos se implementan de forma superficial, el proceso se reduce a un CRUD con un campo de estado.
+  - Requiere prever aprobaciones concurrentes: dos aprobadores actuando sobre la misma nota al mismo tiempo.
 
 ## 4. Decisiones de seguridad
 
