@@ -4,11 +4,12 @@
 
 ### 1.1 Backend
 
-- **Decisión:** Python con FastAPI.
-- **Alternativas consideradas:** Flask, Django y NestJS.
+- **Decisión:** Python con FastAPI, usando SQLModel como ORM.
+- **Alternativas consideradas:** Flask, Django y NestJS como framework; SQLAlchemy 2.0 y Prisma como ORM.
 - **Motivo:**
   - **Modelos de datos tipados:** FastAPI usa Pydantic para declarar la estructura de los datos que entran y salen de cada endpoint. La validación de las solicitudes y el formato de las respuestas quedan definidos en un solo lugar, y los datos que no cumplen el modelo se rechazan antes de llegar a la lógica de negocio.
-  - **ORM adaptable al schema existente:** el modelo relacional ya está diseñado y definido en SQL (`db/01-schema.sql`). FastAPI no impone un ORM, así que se puede usar uno (por ejemplo, SQLAlchemy) que **mapee las tablas existentes** en lugar de generarlas. El schema escrito a mano sigue siendo la fuente de verdad.
+  - **ORM adaptable al schema existente:** el modelo relacional ya está diseñado y definido en SQL (`db/01-schema.sql`). FastAPI no impone un ORM, así que se usa uno que **mapea las tablas existentes** en lugar de generarlas. El schema escrito a mano sigue siendo la fuente de verdad: nunca se llama a `create_all()`.
+  - **SQLModel como ORM:** lo creó el mismo autor de FastAPI y está construido sobre SQLAlchemy y Pydantic. Un mismo modelo sirve como tabla y como esquema de la API, y con el patrón de múltiples modelos (`Base`, tabla, `Create`, `Public`, `Update`) cada entidad declara una sola vez sus campos compartidos. Se adapta con menos fricción a la implementación que SQLAlchemy puro, que exige mantener por separado los modelos del ORM y los de Pydantic.
   - Django se descartó justamente por esto: su ORM y su sistema de migraciones esperan ser los dueños del schema, lo que choca con un modelo diseñado primero en SQL.
   - **NestJS** se descartó por el alcance del proyecto y el tiempo disponible, aunque es una opción más adecuada para esta arquitectura en varios aspectos:
     - **Autenticación integrada en el framework:** módulos oficiales para JWT (`@nestjs/jwt`) y estrategias de login (`@nestjs/passport`).
@@ -17,7 +18,8 @@
     - **Mismo lenguaje que el frontend** (TypeScript), con posibilidad de compartir tipos entre ambos.
 
 - **Contras asumidos:**
-  - Cada entidad tiene dos representaciones: el modelo del ORM (tabla) y el modelo de Pydantic (API). Hay que mantenerlas alineadas a mano.
+  - SQLModel es menos maduro y tiene menos documentación que SQLAlchemy. Para consultas complejas se puede recurrir a SQLAlchemy directamente, porque SQLModel está construido sobre él.
+  - Como la clase de la tabla también es un modelo válido para la API, usarla por error como `response_model` expondría todas sus columnas (por ejemplo, `hashed_password`). Regla del proyecto: las respuestas usan siempre los modelos `*Public`.
   - FastAPI no incluye autenticación ni panel de administración, como Django: el login y el control de acceso se implementan por cuenta propia.
 
 ### 1.2 Frontend
