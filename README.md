@@ -7,6 +7,7 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
 ## Requisitos
 
 - Docker con Docker Compose v2
+- Solo para desarrollo del frontend fuera de Docker: Node.js 22
 - Solo para ejecutar los tests del backend: Python 3.13
 
 ## Levantar el proyecto
@@ -28,6 +29,7 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `JWT_SECRET` | Secreto para firmar las sesiones (mínimo 32 caracteres) |
    | `JWT_EXPIRE_MINUTES` | Duración de la sesión en minutos (por defecto 60) |
    | `SEED_USER_PASSWORD` | Contraseña común de los [usuarios de prueba](#usuarios-de-prueba) |
+   | `FRONTEND_PORT` | Puerto del host en `127.0.0.1` donde se publica el portal (por defecto 8080) |
    | `DB_PORT` / `BACKEND_PORT` | Puertos del host en `127.0.0.1` (solo desarrollo) |
 
    Para usar valores propios, genéralos con `openssl rand -hex 32`. Las contraseñas de PostgreSQL deben tener solo letras, números y guiones bajos, porque forman parte de la URL de conexión del backend.
@@ -42,6 +44,7 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    |---|---|
    | `db` | PostgreSQL 17. Al iniciar con el volumen vacío ejecuta en orden los scripts de `db/` |
    | `backend` | API FastAPI. Se conecta a la base de datos como el usuario de la aplicación |
+   | `frontend` | React compilado y servido por nginx, que además reenvía `/api` al backend. **Es el único servicio publicado** |
 
    | Script de `db/` | Contenido |
    |---|---|
@@ -53,16 +56,30 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `05-seed-usuarios.sql` | Usuarios de prueba, con la contraseña de `SEED_USER_PASSWORD` |
    | `06-seed-notas-credito-ejemplo.sql` | 8 notas de crédito de ejemplo en los cuatro estados, con su historial |
 
-3. Verificar:
+3. Abrir el portal en <http://localhost:8080>.
+
+   Verificación desde la terminal:
 
    ```bash
-   curl http://localhost:8000/api/health   # {"status":"ok"}
+   curl http://localhost:8080/api/health   # {"status":"ok"}
    docker compose exec db psql -U vp_admin -d vp_finanzas -c "SELECT count(*) FROM colaborador;"   # 40
    ```
 
-   Documentación interactiva de la API (Swagger): <http://localhost:8000/docs>
+   Documentación interactiva de la API (Swagger, solo en desarrollo): <http://localhost:8000/docs>
 
 En desarrollo, el backend se recarga automáticamente al guardar cambios en `backend/app/`, sin reconstruir la imagen.
+
+### Frontend en modo desarrollo
+
+Para trabajar en el frontend con recarga instantánea, con los contenedores levantados:
+
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:5173, con /api reenviado al backend en localhost:8000
+```
+
+El código siempre llama a rutas relativas (`/api/...`): en desarrollo las reenvía el servidor de Vite y en Docker, nginx.
 
 ## Usuarios de prueba
 
