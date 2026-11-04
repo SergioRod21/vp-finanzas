@@ -8,6 +8,7 @@ from app.models.organizacion import (
     Nivel,
     Pais,
 )
+from app.models.nota_credito import MotivoNotaCredito, NotaCredito, NotaCreditoHistorico
 from app.models.organizacion_public import CargoFicha, ColaboradorFicha, ColaboradorResumen, Perfil
 from app.models.usuario import Rol, Usuario
 
@@ -21,7 +22,10 @@ __all__ = [
     "Departamento",
     "Funcion",
     "LoginRequest",
+    "MotivoNotaCredito",
     "Nivel",
+    "NotaCredito",
+    "NotaCreditoHistorico",
     "Pais",
     "Perfil",
     "Rol",
