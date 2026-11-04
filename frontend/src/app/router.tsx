@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router/dom'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
+import { PerfilRoute } from '@/app/routes/perfil'
 import { ErrorRuta } from '@/components/feedback/error-ruta'
 import { ModuloEnConstruccion } from '@/components/feedback/modulo-en-construccion'
 import { LayoutPrincipal } from '@/components/layout/layout-principal'
@@ -42,7 +43,7 @@ const router = createBrowserRouter([
                   { path: paths.inicio, element: <InicioRoute /> },
                   {
                     element: <RutaModulo modulo="perfil" />,
-                    children: [{ path: paths.perfil, element: <ModuloEnConstruccion titulo="Mi perfil" /> }],
+                    children: [{ path: paths.perfil, element: <PerfilRoute /> }],
                   },
                   {
                     element: <RutaModulo modulo="colaboradores" />,
