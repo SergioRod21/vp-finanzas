@@ -21,3 +21,11 @@ Cada entrada separa **lo que pedí** (mi decisión de qué construir) del **apor
 | 5 | Seguridad | Conexión de la aplicación a la base de datos | Usuario `vp_app` con privilegios mínimos | ✏️ Modificado | [03-seguridad-auth](03-seguridad-auth.md#5-usuario-de-base-de-datos-para-la-aplicación) |
 | 6 | Arquitectura | Comparación de framework y ORM para el backend | Recomendó FastAPI + SQLAlchemy 2.0 | ✏️ Modificado: FastAPI sí, SQLModel en lugar de SQLAlchemy | [02-stack-arquitectura](02-stack-arquitectura.md#6-framework-y-orm-del-backend) |
 | 7 | Seguridad | Mecanismo de sesión adaptado al stack | JWT en cookie `httpOnly`, con el usuario leído de la BD en cada petición | ✅ Aceptado | [03-seguridad-auth](03-seguridad-auth.md#7-mecanismo-de-sesión) |
+
+## Errores detectados
+
+Errores o malas prácticas de la AI detectados y corregidos: ver [errores-detectados.md](errores-detectados.md).
+
+| # | Error | Corrección |
+|---|---|---|
+| E1 | Capa de repositorio aplicada solo al módulo de notas de crédito | Repositorios en todos los módulos: solo ellos ejecutan SQL |
