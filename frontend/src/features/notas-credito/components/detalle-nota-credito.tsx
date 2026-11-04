@@ -12,7 +12,8 @@ import { AccionesNotaCredito } from '@/features/notas-credito/components/accione
 import { BadgeEstadoNota } from '@/features/notas-credito/components/badge-estado-nota'
 import { DatosNotaCredito } from '@/features/notas-credito/components/datos-nota-credito'
 import { HistorialNotaCredito } from '@/features/notas-credito/components/historial-nota-credito'
-import { ApiError, mensajeDeError } from '@/lib/api-client'
+import { mensajeDeError } from '@/lib/api-client'
+import { esNoEncontrado, esSinPermiso } from '@/lib/errores-api'
 import { formatearFecha } from '@/utils/formatos'
 
 /**
@@ -27,8 +28,8 @@ export function DetalleNotaCredito({ notaId }: { notaId: number }) {
   // Si la nota ya está en pantalla, un error al refrescarla no la oculta.
   if (!nota) {
     if (!consulta.isError) return <CargadorPagina />
-    if (consulta.error instanceof ApiError && consulta.error.status === 404) return <PaginaNoEncontrada />
-    if (consulta.error instanceof ApiError && consulta.error.status === 403) return <SinPermiso />
+    if (esNoEncontrado(consulta.error)) return <PaginaNoEncontrada />
+    if (esSinPermiso(consulta.error)) return <SinPermiso />
     return (
       <ErrorCarga
         titulo="No se pudo cargar la nota de crédito"

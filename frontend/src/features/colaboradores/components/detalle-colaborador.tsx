@@ -84,7 +84,11 @@ function DatosColaborador({ colaborador, renderCargo }: { colaborador: Colaborad
             <DataList.Item>
               <DataList.ItemLabel>Cargo</DataList.ItemLabel>
               <DataList.ItemValue>
-                {renderCargo({ titulo: colaborador.cargo, departamentoId: ficha?.departamento_id ?? null })}
+                {renderCargo({
+                  cargoId: colaborador.cargo_id,
+                  titulo: colaborador.cargo,
+                  departamentoId: ficha?.departamento_id ?? null,
+                })}
               </DataList.ItemValue>
             </DataList.Item>
             {ficha && <DatosLaborales ficha={ficha} />}

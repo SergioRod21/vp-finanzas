@@ -10,6 +10,7 @@ export interface ColaboradorResumen {
   nombre: string
   apellido: string
   correo: string
+  cargo_id: number
   cargo: string
 }
 
@@ -32,6 +33,7 @@ export type ListaColaboradores = ColaboradorFicha[] | ColaboradorResumen[]
 
 /** El cargo de un colaborador, para enlazarlo. El resumen no trae el departamento: null. */
 export interface CargoDelColaborador {
+  cargoId: number
   titulo: string
   departamentoId: number | null
 }

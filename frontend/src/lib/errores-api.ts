@@ -8,3 +8,8 @@ import { ApiError } from '@/lib/api-client'
 export function esNoEncontrado(error: unknown): error is ApiError {
   return error instanceof ApiError && error.status === 404
 }
+
+/** Si el error es un 403 de la API: el rol del usuario no permite la acción o el recurso. */
+export function esSinPermiso(error: unknown): error is ApiError {
+  return error instanceof ApiError && error.status === 403
+}

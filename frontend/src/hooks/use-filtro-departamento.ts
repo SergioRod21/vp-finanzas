@@ -1,7 +1,7 @@
 import { useSearchParams } from 'react-router'
 
 import { useUsuarioAutenticado } from '@/lib/auth/usuario-actual'
-import { ROLES } from '@/types/rol'
+import { puedeFiltrarPorDepartamento } from '@/lib/authorization'
 import { parsearId } from '@/utils/identificadores'
 
 /** Parámetro de la URL con el departamento elegido, por ejemplo /colaboradores?departamento=2. */
@@ -27,7 +27,7 @@ export interface FiltroDepartamento {
 export function useFiltroDepartamento(): FiltroDepartamento {
   const usuario = useUsuarioAutenticado()
   const [parametros, setParametros] = useSearchParams()
-  const disponible = usuario.rol === ROLES.administrador
+  const disponible = puedeFiltrarPorDepartamento(usuario)
 
   function cambiarDepartamento(departamentoId: number | null) {
     setParametros(
