@@ -1,9 +1,14 @@
 import { createBrowserRouter } from 'react-router'
 import { RouterProvider } from 'react-router/dom'
 
+import { CargoDetalleRoute } from '@/app/routes/cargo-detalle'
+import { CargosRoute } from '@/app/routes/cargos'
+import { ColaboradorDetalleRoute } from '@/app/routes/colaborador-detalle'
+import { ColaboradoresRoute } from '@/app/routes/colaboradores'
 import { InicioRoute } from '@/app/routes/inicio'
 import { LoginRoute } from '@/app/routes/login'
 import { NoEncontradoRoute } from '@/app/routes/no-encontrado'
+import { PerfilRoute } from '@/app/routes/perfil'
 import { ErrorRuta } from '@/components/feedback/error-ruta'
 import { ModuloEnConstruccion } from '@/components/feedback/modulo-en-construccion'
 import { LayoutPrincipal } from '@/components/layout/layout-principal'
@@ -42,23 +47,20 @@ const router = createBrowserRouter([
                   { path: paths.inicio, element: <InicioRoute /> },
                   {
                     element: <RutaModulo modulo="perfil" />,
-                    children: [{ path: paths.perfil, element: <ModuloEnConstruccion titulo="Mi perfil" /> }],
+                    children: [{ path: paths.perfil, element: <PerfilRoute /> }],
                   },
                   {
                     element: <RutaModulo modulo="colaboradores" />,
                     children: [
-                      { path: paths.colaboradores.lista, element: <ModuloEnConstruccion titulo="Colaboradores" /> },
-                      {
-                        path: paths.colaboradores.patronDetalle,
-                        element: <ModuloEnConstruccion titulo="Ficha del colaborador" />,
-                      },
+                      { path: paths.colaboradores.lista, element: <ColaboradoresRoute /> },
+                      { path: paths.colaboradores.patronDetalle, element: <ColaboradorDetalleRoute /> },
                     ],
                   },
                   {
                     element: <RutaModulo modulo="cargos" />,
                     children: [
-                      { path: paths.cargos.lista, element: <ModuloEnConstruccion titulo="Cargos y funciones" /> },
-                      { path: paths.cargos.patronDetalle, element: <ModuloEnConstruccion titulo="Detalle del cargo" /> },
+                      { path: paths.cargos.lista, element: <CargosRoute /> },
+                      { path: paths.cargos.patronDetalle, element: <CargoDetalleRoute /> },
                     ],
                   },
                   {
