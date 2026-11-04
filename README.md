@@ -26,6 +26,7 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Administrador. Solo inicializa la base de datos |
    | `APP_DB_USER` / `APP_DB_PASSWORD` | Usuario de la aplicación, con privilegios mínimos. Lo usa el backend |
    | `JWT_SECRET` | Secreto para firmar las sesiones (mínimo 32 caracteres) |
+   | `JWT_EXPIRE_MINUTES` | Duración de la sesión en minutos (por defecto 60) |
    | `SEED_USER_PASSWORD` | Contraseña común de los [usuarios de prueba](#usuarios-de-prueba) |
    | `DB_PORT` / `BACKEND_PORT` | Puertos del host en `127.0.0.1` (solo desarrollo) |
 
@@ -64,7 +65,7 @@ En desarrollo, el backend se recarga automáticamente al guardar cambios en `bac
 
 ## Usuarios de prueba
 
-Todos usan la contraseña definida en `SEED_USER_PASSWORD` (en `.env.example`: `Demo.Finanzas.2026`). El login es con el correo.
+Todos usan la contraseña definida en `SEED_USER_PASSWORD` (en `.env.example`: `Demo.Finanzas.2026`). El login es con el correo, en `POST /api/auth/login` (se puede probar desde <http://localhost:8000/docs>). La sesión queda en una cookie `httpOnly`; `GET /api/auth/me` devuelve el usuario autenticado y `POST /api/auth/logout` la cierra.
 
 | Rol | Correo | Departamento |
 |---|---|---|

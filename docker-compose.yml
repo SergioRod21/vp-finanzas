@@ -37,6 +37,9 @@ services:
       # Se conecta como el usuario de la aplicación (privilegios mínimos), nunca como el administrador.
       # El host es "db": el nombre del servicio dentro de la red de Docker.
       DATABASE_URL: postgresql+psycopg://${APP_DB_USER:?Definir APP_DB_USER en .env}:${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}@db:5432/${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+      APP_ENV: ${APP_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET:?Definir JWT_SECRET en .env}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
     depends_on:
       db:
         condition: service_healthy   # espera a que PostgreSQL acepte conexiones

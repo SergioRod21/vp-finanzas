@@ -99,7 +99,7 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 - **Implementación:**
   - El token solo contiene el identificador del usuario (`sub`) y su expiración (`exp`). **No incluye el rol ni el departamento.**
   - En cada petición, el backend lee de la base de datos el usuario, su rol, su departamento y los dos indicadores `activo` (de `usuario` y de `colaborador`). Así, un cambio de rol o una desactivación se aplican en la siguiente petición, sin esperar a que el token expire. Es la misma consulta que necesita el control de acceso por departamento (S3).
-  - Expiración corta, de 30 a 60 minutos.
+  - Expiración de 60 minutos, configurable con `JWT_EXPIRE_MINUTES` (entre 5 y 1440).
   - Atributos de la cookie: `httpOnly`, `SameSite=Strict` y `Path=/api`, más `Secure` cuando se sirve por HTTPS.
   - Firma HS256 con la librería PyJWT. El secreto se lee de la variable de entorno `JWT_SECRET` y nunca está en el código.
   - El logout borra la cookie.
@@ -176,3 +176,5 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 - **En un despliegue real:** sin usuarios de demostración ni valores de ejemplo; secretos generados y almacenados en un gestor de secretos; los usuarios los crea un administrador y cada uno define su propia contraseña.
 
 ## 5. Limitaciones conocidas y mejoras futuras
+
+- **Sin límite de intentos de login:** no hay protección contra fuerza bruta (rate limiting ni bloqueo temporal tras varios intentos fallidos). En un despliegue real se agregaría en el backend o en el proxy.
