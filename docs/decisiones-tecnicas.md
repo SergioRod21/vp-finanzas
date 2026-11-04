@@ -84,10 +84,29 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ### S2. Mecanismo de sesión
 
-- **Decisión:**
+- **Decisión:** JWT firmado, enviado en una cookie `httpOnly`. `POST /api/auth/login` valida las credenciales y emite la cookie; el navegador la reenvía en cada petición y una dependencia de FastAPI la valida.
 - **Alternativas consideradas:**
+  - **Sesión en servidor** (ID opaco en cookie y tabla de sesiones en PostgreSQL): revocación total e inmediata, pero agrega una tabla y su limpieza periódica.
+  - **JWT Bearer en el header `Authorization`:** estándar en APIs públicas, pero el frontend tendría que guardar el token. En `localStorage` queda expuesto a XSS; solo en memoria, se pierde al recargar.
+  - **Cookie de sesión firmada** (`SessionMiddleware` de Starlette): muy simple, pero su contenido es legible, no permite revocación y está pensada para aplicaciones renderizadas en el servidor.
+  - **JWT de acceso con refresh token:** combina ausencia de estado y revocación, pero su complejidad (dos tokens, endpoint de renovación, reintentos en el frontend) es excesiva para el alcance del portal.
+  - **Proveedor de identidad externo** (OAuth2/OIDC): fuera del alcance, porque el enunciado pide un login propio.
 - **Motivo:**
+  - **Protección contra XSS:** JavaScript no puede leer una cookie `httpOnly`, así que un script inyectado no puede robar el token.
+  - **Protección contra CSRF:** con `SameSite=Strict` y el frontend y la API en el mismo origen (nginx en producción, proxy de Vite en desarrollo), otro sitio no puede hacer que el navegador envíe la cookie.
+  - **Sin estado en la base de datos:** no requiere tablas nuevas, lo que mantiene simple el esquema.
+  - **Frontend más simple:** el navegador envía la cookie automáticamente; el código de React no guarda ni adjunta tokens.
+- **Implementación:**
+  - El token solo contiene el identificador del usuario (`sub`) y su expiración (`exp`). **No incluye el rol ni el departamento.**
+  - En cada petición, el backend lee de la base de datos el usuario, su rol, su departamento y los dos indicadores `activo` (de `usuario` y de `colaborador`). Así, un cambio de rol o una desactivación se aplican en la siguiente petición, sin esperar a que el token expire. Es la misma consulta que necesita el control de acceso por departamento (S3).
+  - Expiración corta, de 30 a 60 minutos.
+  - Atributos de la cookie: `httpOnly`, `SameSite=Strict` y `Path=/api`, más `Secure` cuando se sirve por HTTPS.
+  - Firma HS256 con la librería PyJWT. El secreto se lee de la variable de entorno `JWT_SECRET` y nunca está en el código.
+  - El logout borra la cookie.
 - **Contras asumidos:**
+  - **Revocación incompleta:** un JWT es válido hasta que expira. Si alguien copiara el token antes del logout, podría usarlo hasta su vencimiento. La expiración corta y `httpOnly` reducen este riesgo, y la lectura del usuario en cada petición bloquea de inmediato a los usuarios desactivados.
+  - Si la API tuviera que servir a clientes de otro origen (por ejemplo, una app móvil), habría que revisar `SameSite` y agregar protección explícita contra CSRF.
+- **En un despliegue real:** pasar a sesiones en servidor, o a tokens de acceso cortos con refresh tokens revocables, para tener revocación inmediata; servir siempre por HTTPS con `Secure`; y rotar `JWT_SECRET` periódicamente.
 
 ### S3. Control de acceso por rol y departamento
 
