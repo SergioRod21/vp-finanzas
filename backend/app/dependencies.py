@@ -1,10 +1,12 @@
 """Dependencias compartidas por los routers."""
 
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import Cookie, Depends, HTTPException, status
 
 from app.core.config import SESSION_COOKIE_NAME
+from app.core.roles import RolNombre
 from app.core.db import SessionDep
 from app.core.security import decode_access_token
 from app.models import UsuarioActual
@@ -34,3 +36,20 @@ def get_current_user(
 
 # Uso en los endpoints protegidos:  def endpoint(usuario: CurrentUser): ...
 CurrentUser = Annotated[UsuarioActual, Depends(get_current_user)]
+
+
+def require_roles(*roles: RolNombre) -> Callable[..., UsuarioActual]:
+    """Crea una dependencia que solo deja pasar a los roles indicados (403 si no).
+
+    Uso:  usuario: Annotated[UsuarioActual, Depends(require_roles(RolNombre.ADMINISTRADOR))]
+    """
+    permitidos = {rol.value for rol in roles}
+
+    def verificar_rol(usuario: CurrentUser) -> UsuarioActual:
+        if usuario.rol not in permitidos:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN, "No tiene permisos para realizar esta acción"
+            )
+        return usuario
+
+    return verificar_rol
