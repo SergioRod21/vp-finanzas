@@ -43,6 +43,8 @@ Portal interno para la Vicepresidencia de Finanzas: estructura organizacional, a
    | `00-app-user.sql` | Usuario de la aplicación y sus permisos |
    | `01-schema.sql` | Tablas, restricciones e índices |
    | `02-seed.sql` | Datos ficticios: 4 departamentos y 40 colaboradores |
+   | `03-notas-credito.sql` | Tablas del módulo de notas de crédito, con sus reglas de negocio |
+   | `04-seed-notas-credito.sql` | Catálogo de motivos de nota de crédito |
 
 3. Verificar:
 
