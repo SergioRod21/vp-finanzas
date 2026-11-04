@@ -27,7 +27,7 @@ ENDPOINTS = [
 ]
 
 RESUMEN = ColaboradorResumen(colaborador_id=1, nombre="Elena", apellido="Carvajal",
-                             correo="elena@vpfinanzas.example", cargo="Analista")
+                             correo="elena@vpfinanzas.example", cargo_id=11, cargo="Analista")
 FICHA = ColaboradorFicha(**RESUMEN.model_dump(), pais="Venezuela",
                          fecha_ingreso=date(2017, 10, 23), activo=True,
                          nivel="Senior", departamento_id=2, departamento="Tesorería")
@@ -77,7 +77,7 @@ def test_colaborador_recibe_solo_el_resumen(client_como, monkeypatch):
     response = client_como(COLABORADOR).get("/api/colaboradores")
 
     assert response.status_code == 200
-    assert set(response.json()[0]) == {"colaborador_id", "nombre", "apellido", "correo", "cargo"}
+    assert set(response.json()[0]) == {"colaborador_id", "nombre", "apellido", "correo", "cargo_id", "cargo"}
 
 
 def test_jefe_recibe_la_ficha_completa(client_como, monkeypatch):

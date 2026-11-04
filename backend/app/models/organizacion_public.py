@@ -16,6 +16,7 @@ class ColaboradorResumen(SQLModel):
     nombre: str
     apellido: str
     correo: str
+    cargo_id: int
     cargo: str
 
 

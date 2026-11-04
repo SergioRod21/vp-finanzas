@@ -4,13 +4,18 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import StringConstraints
+from pydantic import AfterValidator, StringConstraints
 from sqlmodel import Field, SQLModel
 
 from app.domain.nota_credito import AccionNota, EstadoNota
 
 TextoObligatorio = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
-TextoOpcional = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
+# Un comentario opcional que solo tiene espacios se guarda como NULL, no como texto vacío.
+TextoOpcional = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, max_length=500),
+    AfterValidator(lambda texto: texto or None),
+]
 
 
 # --- Entrada -----------------------------------------------------------------------

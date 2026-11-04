@@ -164,3 +164,18 @@ def test_restriccion_de_la_bd_violada_responde_409_sin_detalles_internos(client_
     assert response.status_code == 409
     assert response.json() == {"detail": "La operación no cumple una regla del negocio"}
     assert "ck_" not in response.text
+
+
+@pytest.mark.parametrize("comentario", ["", "   "])
+def test_comentario_opcional_en_blanco_se_normaliza_a_none(client_como, monkeypatch, comentario):
+    recibido = {}
+
+    def aprobar(session, usuario, nota_id, comentario):
+        recibido["comentario"] = comentario
+        return NOTA
+
+    monkeypatch.setattr(nota_credito_service, "aprobar", aprobar)
+    response = client_como(ADMIN).post("/api/notas-credito/1/aprobar", json={"comentario": comentario})
+
+    assert response.status_code == 200
+    assert recibido["comentario"] is None
