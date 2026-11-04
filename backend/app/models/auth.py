@@ -16,9 +16,11 @@ class UsuarioActual(SQLModel):
     """
 
     usuario_id: int
+    colaborador_id: int
     correo: str
     nombre: str
     apellido: str
     rol: str
+    cargo_id: int
     departamento_id: int
     departamento: str
