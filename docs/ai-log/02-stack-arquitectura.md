@@ -41,3 +41,26 @@
   | Patrón de múltiples modelos (`Base`, tabla, `Create`, `Public`, `Update`) | ✅ Aceptada | Declara los campos compartidos una sola vez y separa lo que se guarda de lo que se expone |
   | Responder siempre con los modelos `*Public` | ✅ Aceptada | Mitiga el principal riesgo de SQLModel: exponer columnas sensibles como `hashed_password` |
 - **Evidencia:** sección 1.1 de `docs/decisiones-tecnicas.md`
+
+## 8. Librerías y arquitectura del frontend
+
+- **Fecha:** 2026-11-04 · **Herramienta:** Claude Code (Opus 5.5)
+- **Contexto:** con la API completa, faltaba definir cómo construir el frontend con React y React Router dentro de un contenedor de Docker en la misma red que el backend.
+- **Lo que pedí:** un plan para el frontend con React, React Router y Docker; después, las alternativas para las llamadas a la API y para los componentes visuales.
+- **Prompts:**
+  > ahora si, actualiza el roadmap y dime como afrontamos esta parte del frontend, tomando en cuenta que quiero usar react con react router tambien en un contenedor de docker en la misma red
+
+  > que alternativas hay para [TanStack Query y Mantine]? dame las distintas opciones
+
+  > y por que no usar fetch?
+
+  > vamos con TanStack Query y Mantine
+- **Aporte de la AI:** propuso nginx como proxy de `/api` (un solo origen, sin CORS), el *fallback* a `index.html` para las rutas de React Router y una red `frontend_net` que deja a la base de datos fuera del alcance del frontend. Comparó cinco opciones para las llamadas a la API y siete para los componentes, y explicó que TanStack Query no reemplaza a `fetch` sino que maneja lo que pasa alrededor de él.
+
+  | Sugerencia de la AI | Decisión | Por qué |
+  |---|---|---|
+  | nginx como proxy de `/api` y una red `frontend_net` | ✅ Aceptada | Un solo origen para la cookie de sesión y la base de datos aislada del frontend |
+  | TanStack Query para las llamadas a la API | ✅ Aceptada | Evita reescribir en cada pantalla la carga, los errores y la recarga de datos |
+  | Mantine para los componentes | ✅ Aceptada | Tablas, formularios y modales listos para usar, con un tema propio |
+  | Estructura por *features* basada en bulletproof-react | ✅ Aceptada | Evita duplicación y archivos mal ubicados al trabajar el frontend por partes |
+- **Evidencia:** sección 1.2 de `docs/decisiones-tecnicas.md`, `frontend/`
