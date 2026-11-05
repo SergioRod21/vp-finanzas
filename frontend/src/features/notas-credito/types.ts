@@ -1,5 +1,7 @@
 import type { MantineColor } from '@mantine/core'
 
+import type { NivelAprobacion } from '@/lib/authorization'
+
 /**
  * Tipos del módulo de notas de crédito. Reflejan los modelos públicos del backend
  * (app/models/nota_credito_public.py) y su máquina de estados (app/domain/nota_credito.py).
@@ -29,6 +31,12 @@ export const PRESENTACION_ESTADO: Record<EstadoNota, { etiqueta: string; color: 
   ANULADA: { etiqueta: 'Anulada', color: 'gray' },
 }
 
+/** Quién debe aprobar la nota, según su nivel de aprobación. */
+export const APROBADOR_SEGUN_NIVEL: Record<NivelAprobacion, string> = {
+  JEFE_DEPARTAMENTO: 'Jefe de Departamento',
+  ADMINISTRADOR: 'Administrador',
+}
+
 /** Cómo se nombra cada acción en el historial. */
 export const ETIQUETA_ACCION: Record<AccionNota, string> = {
   CREAR: 'Solicitud creada',
@@ -52,6 +60,8 @@ export interface NotaCredito {
   monto: string
   detalle: string
   estado: EstadoNota
+  /** Rol que debe aprobarla: el Jefe si la solicitó un Colaborador; el Administrador si la solicitó un Jefe. */
+  nivel_aprobacion: NivelAprobacion
   motivo_nota_credito_id: number
   motivo: string
   departamento_id: number

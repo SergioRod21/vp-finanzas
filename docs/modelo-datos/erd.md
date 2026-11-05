@@ -98,6 +98,7 @@ erDiagram
         numeric monto
         varchar detalle
         varchar estado_actual
+        varchar nivel_aprobacion
         timestamp creada_en
         timestamp actualizada_en
     }

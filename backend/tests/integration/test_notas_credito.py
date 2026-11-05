@@ -1,8 +1,10 @@
 """Proceso de notas de crédito de punta a punta, contra PostgreSQL real.
 
 Cada test crea sus propias notas, así que pueden ejecutarse varias veces sobre la
-misma base de datos. Los usuarios y sus roles salen de db/05-seed-usuarios.sql:
-el Jefe de Tesorería solicita y el Administrador resuelve (matriz S3).
+misma base de datos. Los usuarios y sus roles salen de db/05-seed-usuarios.sql.
+Hay dos caminos de aprobación (matriz S3):
+  - la nota de un Jefe la resuelve el Administrador;
+  - la nota de un Colaborador la resuelve el Jefe de su departamento.
 """
 
 import re
@@ -24,11 +26,11 @@ def motivo_id(clientes):
 
 @pytest.fixture
 def nueva_nota(clientes, motivo_id):
-    """Crea una nota PENDIENTE como Jefe de Tesorería y devuelve su respuesta."""
-    def _crear(**cambios):
+    """Crea una nota PENDIENTE y devuelve su respuesta. Por defecto la solicita el Jefe de Tesorería."""
+    def _crear(solicitante="jefe", **cambios):
         datos = {"motivo_nota_credito_id": motivo_id, "monto": "1520.00",
                  "detalle": "Nota creada por los tests de integración", **cambios}
-        response = clientes["jefe"].post(URL, json=datos)
+        response = clientes[solicitante].post(URL, json=datos)
         assert response.status_code == 201, response.text
         return response.json()
 
@@ -160,7 +162,6 @@ def test_listado_segun_alcance(clientes, nueva_nota):
 
     assert del_jefe and {n["departamento"] for n in del_jefe} == {"Tesorería"}
     assert len({n["departamento"] for n in del_admin}) == 4
-    assert clientes["colaborador"].get(URL).status_code == 403
 
 
 def test_filtro_por_estado(clientes):
@@ -174,3 +175,79 @@ def test_historial_de_una_nota_del_seed(clientes):
     nota = next(n for n in clientes["admin"].get(URL).json() if n["numero"] == "NC-000001")
 
     assert acciones_del_historial(clientes["admin"], nota["nota_credito_id"]) == ["CREAR", "APROBAR"]
+
+
+# --- Camino del Colaborador: lo resuelve el Jefe de su departamento ---------------------
+
+def test_colaborador_crea_y_su_jefe_aprueba(clientes, nueva_nota):
+    nota = nueva_nota(solicitante="colaborador")
+
+    assert nota["nivel_aprobacion"] == "JEFE_DEPARTAMENTO"
+    assert nota["departamento"] == "Tesorería"
+    assert nota["solicitante"] == "Elena Carvajal"
+
+    response = clientes["jefe"].post(f"{URL}/{nota['nota_credito_id']}/aprobar",
+                                     json={"comentario": "Verificado con el cliente"})
+    assert response.status_code == 200
+    assert (response.json()["estado"], response.json()["resolutor"]) == ("APROBADA", "Ricardo Palencia")
+    assert acciones_del_historial(clientes["jefe"], nota["nota_credito_id"]) == ["CREAR", "APROBAR"]
+
+
+def test_la_nota_de_un_jefe_requiere_al_administrador(nueva_nota):
+    assert nueva_nota()["nivel_aprobacion"] == "ADMINISTRADOR"
+
+
+def test_el_administrador_no_resuelve_la_nota_de_un_colaborador(clientes, nueva_nota):
+    nota_id = nueva_nota(solicitante="colaborador")["nota_credito_id"]
+
+    response = clientes["admin"].post(f"{URL}/{nota_id}/aprobar")
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Esta nota de crédito debe resolverla el Jefe de Departamento"}
+    assert acciones_del_historial(clientes["admin"], nota_id) == ["CREAR"]
+
+
+def test_el_jefe_no_resuelve_la_nota_de_un_jefe(clientes, nueva_nota):
+    # La única nota de Jefe que el Jefe de Tesorería ve es la suya: también cubre la autoaprobación.
+    nota_id = nueva_nota()["nota_credito_id"]
+
+    response = clientes["jefe"].post(f"{URL}/{nota_id}/rechazar", json={"comentario": "x"})
+
+    assert response.status_code == 403
+
+
+def test_jefe_de_otro_departamento_no_resuelve_la_nota_de_un_colaborador(clientes, nueva_nota):
+    nota_id = nueva_nota(solicitante="colaborador")["nota_credito_id"]
+
+    assert clientes["jefe_otro_depto"].post(f"{URL}/{nota_id}/aprobar").status_code == 404
+
+
+def test_el_jefe_rechaza_la_nota_de_un_colaborador(clientes, nueva_nota):
+    nota_id = nueva_nota(solicitante="colaborador")["nota_credito_id"]
+
+    response = clientes["jefe"].post(f"{URL}/{nota_id}/rechazar",
+                                     json={"comentario": "Fuera de la política comercial"})
+
+    assert response.status_code == 200
+    assert response.json()["estado"] == "RECHAZADA"
+
+
+def test_el_colaborador_anula_su_nota_pero_no_la_resuelve(clientes, nueva_nota):
+    nota_id = nueva_nota(solicitante="colaborador")["nota_credito_id"]
+
+    assert clientes["colaborador"].post(f"{URL}/{nota_id}/aprobar").status_code == 403
+
+    response = clientes["colaborador"].post(f"{URL}/{nota_id}/anular")
+    assert response.status_code == 200
+    assert (response.json()["estado"], response.json()["resolutor"]) == ("ANULADA", None)
+
+
+def test_el_colaborador_solo_ve_sus_propias_notas(clientes, nueva_nota):
+    nueva_nota(solicitante="colaborador")
+    nota_del_jefe = nueva_nota()["nota_credito_id"]
+
+    propias = clientes["colaborador"].get(URL).json()
+
+    assert propias and {n["solicitante"] for n in propias} == {"Elena Carvajal"}
+    assert clientes["colaborador"].get(f"{URL}/{nota_del_jefe}").status_code == 404
+    assert clientes["colaborador"].post(f"{URL}/{nota_del_jefe}/anular").status_code == 404

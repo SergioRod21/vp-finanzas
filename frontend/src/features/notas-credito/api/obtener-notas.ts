@@ -6,7 +6,7 @@ import { api } from '@/lib/api-client'
 
 /**
  * GET /api/notas-credito, con el filtro opcional por estado. El backend decide el
- * alcance: el Administrador recibe todas y el Jefe, solo las de su departamento.
+ * alcance: el Administrador recibe todas; el Jefe, las de su departamento; el Colaborador, las suyas.
  */
 export function obtenerNotas(estado: EstadoNota | null, signal?: AbortSignal): Promise<NotaCredito[]> {
   const consulta = estado ? `?${new URLSearchParams({ estado }).toString()}` : ''

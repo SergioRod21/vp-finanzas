@@ -16,6 +16,9 @@ from app.domain.nota_credito import (
     ACCIONES_DE_RESOLUCION,
     AccionNota,
     EstadoNota,
+    NivelAprobacion,
+    nivel_aprobacion_para,
+    puede_resolver,
     siguiente_estado,
 )
 from app.models import UsuarioActual
@@ -26,10 +29,15 @@ from app.models.nota_credito_public import (
     NotaCreditoPublic,
 )
 from app.repositories import nota_credito_repository as repo
-from app.repositories.nota_credito_repository import NotaConDetalle
-from app.services.acceso import departamento_en_alcance
+from app.repositories.nota_credito_repository import AlcanceNotas, NotaConDetalle
+from app.services.acceso import alcance_notas_credito
 
 NOTA_NO_ENCONTRADA = "Nota de crédito no encontrada"
+
+
+def _alcance(usuario: UsuarioActual) -> AlcanceNotas:
+    departamento_id, solicitante_id = alcance_notas_credito(usuario)
+    return AlcanceNotas(departamento_id=departamento_id, solicitante_id=solicitante_id)
 
 
 def _a_public(n: NotaConDetalle) -> NotaCreditoPublic:
@@ -39,6 +47,7 @@ def _a_public(n: NotaConDetalle) -> NotaCreditoPublic:
         monto=n.nota.monto,
         detalle=n.nota.detalle,
         estado=n.nota.estado_actual,
+        nivel_aprobacion=n.nota.nivel_aprobacion,
         motivo_nota_credito_id=n.nota.motivo_nota_credito_id,
         motivo=n.motivo,
         departamento_id=n.nota.departamento_id,
@@ -61,12 +70,12 @@ def listar_motivos(session: Session) -> list[MotivoPublic]:
 def listar(
     session: Session, usuario: UsuarioActual, estado: EstadoNota | None = None
 ) -> list[NotaCreditoPublic]:
-    notas = repo.listar_notas(session, departamento_en_alcance(usuario), estado)
+    notas = repo.listar_notas(session, _alcance(usuario), estado)
     return [_a_public(n) for n in notas]
 
 
 def obtener(session: Session, usuario: UsuarioActual, nota_id: int) -> NotaCreditoPublic:
-    nota = repo.obtener_nota(session, nota_id, departamento_en_alcance(usuario))
+    nota = repo.obtener_nota(session, nota_id, _alcance(usuario))
     if nota is None:
         raise NoEncontrado(NOTA_NO_ENCONTRADA)
     return _a_public(nota)
@@ -93,7 +102,12 @@ def historial(
 # --- Acciones --------------------------------------------------------------------------
 
 def crear(session: Session, usuario: UsuarioActual, datos: NotaCreditoCrear) -> NotaCreditoPublic:
-    """El Jefe solicita una nota para SU departamento (nunca para otro)."""
+    """El Colaborador o el Jefe solicita una nota para SU departamento (nunca para otro).
+
+    El nivel de aprobación se fija aquí, según el rol del solicitante, y no cambia
+    aunque después cambie su rol.
+    """
+    nivel = nivel_aprobacion_para(usuario.rol)
     if not repo.existe_motivo(session, datos.motivo_nota_credito_id):
         raise DatosInvalidos("El motivo indicado no existe")
 
@@ -104,6 +118,7 @@ def crear(session: Session, usuario: UsuarioActual, datos: NotaCreditoCrear) -> 
         motivo_id=datos.motivo_nota_credito_id,
         monto=datos.monto,
         detalle=datos.detalle,
+        nivel_aprobacion=nivel,
     )
     repo.insertar_evento(
         session,
@@ -136,11 +151,23 @@ def anular(
     return _aplicar_accion(session, usuario, nota_id, AccionNota.ANULAR, comentario)
 
 
-def _verificar_autoria(usuario: UsuarioActual, solicitante_id: int, accion: AccionNota) -> None:
+_DESCRIPCION_APROBADOR = {
+    NivelAprobacion.JEFE_DEPARTAMENTO: "el Jefe de Departamento",
+    NivelAprobacion.ADMINISTRADOR: "el Administrador",
+}
+
+
+def _verificar_permiso(
+    usuario: UsuarioActual, solicitante_id: int, nivel: str, accion: AccionNota
+) -> None:
     es_solicitante = usuario.usuario_id == solicitante_id
-    if accion in ACCIONES_DE_RESOLUCION and es_solicitante:
-        # Segregación de funciones. La BD lo impide también (ck_nota_credito_no_autoaprobacion).
-        raise AccesoDenegado("No puede resolver una nota de crédito que usted solicitó")
+    if accion in ACCIONES_DE_RESOLUCION:
+        if es_solicitante:
+            # Segregación de funciones. La BD lo impide también (ck_nota_credito_no_autoaprobacion).
+            raise AccesoDenegado("No puede resolver una nota de crédito que usted solicitó")
+        if not puede_resolver(usuario.rol, nivel):
+            aprobador = _DESCRIPCION_APROBADOR[NivelAprobacion(nivel)]
+            raise AccesoDenegado(f"Esta nota de crédito debe resolverla {aprobador}")
     if accion == AccionNota.ANULAR and not es_solicitante:
         raise AccesoDenegado("Solo quien solicitó la nota de crédito puede anularla")
 
@@ -155,15 +182,15 @@ def _aplicar_accion(
     """Aplica una transición de estado en una sola transacción:
 
     1. Bloquea la fila de la nota (las acciones simultáneas sobre ella esperan).
-    2. Verifica alcance, autoría y que la transición sea válida.
+    2. Verifica alcance, permiso (autoría y nivel de aprobación) y que la transición sea válida.
     3. Actualiza el estado e inserta el evento de auditoría.
     4. Confirma la transacción.
     """
-    nota = repo.bloquear_nota(session, nota_id, departamento_en_alcance(usuario))
+    nota = repo.bloquear_nota(session, nota_id, _alcance(usuario))
     if nota is None:
         raise NoEncontrado(NOTA_NO_ENCONTRADA)
 
-    _verificar_autoria(usuario, nota.solicitante_id, accion)
+    _verificar_permiso(usuario, nota.solicitante_id, nota.nivel_aprobacion, accion)
     estado_anterior = nota.estado_actual
     estado_nuevo = siguiente_estado(estado_anterior, accion)  # TransicionInvalida → 409
 

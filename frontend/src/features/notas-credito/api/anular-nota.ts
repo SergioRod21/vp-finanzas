@@ -5,7 +5,7 @@ import type { NotaCredito } from '@/features/notas-credito/types'
 import { api } from '@/lib/api-client'
 
 /**
- * POST /api/notas-credito/{id}/anular (solo el Jefe que la solicitó). El comentario es
+ * POST /api/notas-credito/{id}/anular (solo quien la solicitó). El comentario es
  * opcional. 403 si no la solicitó él y 409 si la nota ya no está PENDIENTE.
  */
 export function anularNota(notaId: number, comentario?: string): Promise<NotaCredito> {

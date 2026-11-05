@@ -17,6 +17,8 @@ import {
   validarTextoObligatorio,
 } from '@/features/notas-credito/validacion'
 import { mensajeDeError } from '@/lib/api-client'
+import { useUsuarioAutenticado } from '@/lib/auth/usuario-actual'
+import { ROLES } from '@/types/rol'
 import { formatearMonto } from '@/utils/formatos'
 
 interface ValoresFormulario {
@@ -35,6 +37,9 @@ interface FormularioNuevaNotaProps {
 /** Solicitud de una nota de crédito. La validación refleja las reglas del backend. */
 export function FormularioNuevaNota({ onCreada }: FormularioNuevaNotaProps) {
   const motivos = useMotivos()
+  const usuario = useUsuarioAutenticado()
+  // La nota de un Colaborador la aprueba el Jefe de su departamento; la de un Jefe, el Administrador.
+  const aprobador = usuario.rol === ROLES.colaborador ? 'el Jefe de tu departamento' : 'el Administrador'
   const crearNota = useCrearNota()
 
   const form = useForm<ValoresFormulario, NuevaNotaCredito>({
@@ -131,8 +136,8 @@ export function FormularioNuevaNota({ onCreada }: FormularioNuevaNotaProps) {
         />
 
         <Text size="sm" c="dimmed">
-          La solicitud se registra para tu departamento y queda pendiente hasta que el Administrador la apruebe
-          o la rechace.
+          La solicitud se registra para tu departamento y queda pendiente hasta que {aprobador} la apruebe o la
+          rechace.
         </Text>
 
         <Group justify="flex-end">

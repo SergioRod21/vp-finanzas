@@ -8,6 +8,7 @@
 --   - montos positivos con precisión decimal exacta
 --   - solo estados y transiciones válidas
 --   - quien solicita no puede resolver su propia nota
+--   - cada nota indica qué rol debe aprobarla (nivel_aprobacion)
 --   - el historial no se puede modificar ni borrar desde la aplicación
 -- =============================================================================
 
@@ -47,6 +48,7 @@ CREATE TABLE nota_credito (
     monto                  NUMERIC(14,2) NOT NULL,
     detalle                VARCHAR(500)  NOT NULL,
     estado_actual          VARCHAR(20)   NOT NULL DEFAULT 'PENDIENTE',
+    nivel_aprobacion       VARCHAR(30)   NOT NULL,
     creada_en              TIMESTAMPTZ   NOT NULL DEFAULT now(),
     actualizada_en         TIMESTAMPTZ   NOT NULL DEFAULT now(),
 
@@ -66,6 +68,11 @@ CREATE TABLE nota_credito (
     CONSTRAINT ck_nota_credito_detalle CHECK (btrim(detalle) <> ''),
     CONSTRAINT ck_nota_credito_estado  CHECK (
         estado_actual IN ('PENDIENTE', 'APROBADA', 'RECHAZADA', 'ANULADA')
+    ),
+    -- Quién debe aprobarla, según el rol de quien la solicitó: la nota de un
+    -- Colaborador la aprueba el Jefe de su departamento; la de un Jefe, el Administrador.
+    CONSTRAINT ck_nota_credito_nivel_aprobacion CHECK (
+        nivel_aprobacion IN ('JEFE_DEPARTAMENTO', 'ADMINISTRADOR')
     ),
     -- Segregación de funciones: nadie resuelve su propia solicitud.
     CONSTRAINT ck_nota_credito_no_autoaprobacion CHECK (resolutor_id <> solicitante_id),
@@ -150,5 +157,6 @@ COMMENT ON TABLE nota_credito_historico IS 'Historial de acciones sobre cada not
 COMMENT ON COLUMN nota_credito.numero          IS 'Identificador legible (NC-000001), generado por secuencia';
 COMMENT ON COLUMN nota_credito.resolutor_id    IS 'Usuario que aprobó o rechazó la nota; NULL mientras está pendiente o si fue anulada';
 COMMENT ON COLUMN nota_credito.departamento_id IS 'Departamento de origen; se guarda como fotografía histórica aunque el solicitante cambie de departamento';
+COMMENT ON COLUMN nota_credito.nivel_aprobacion IS 'Rol que debe aprobar la nota (JEFE_DEPARTAMENTO o ADMINISTRADOR), fijado al crearla según el rol del solicitante';
 
 COMMIT;

@@ -7,7 +7,7 @@ from typing import Annotated
 from pydantic import AfterValidator, StringConstraints
 from sqlmodel import Field, SQLModel
 
-from app.domain.nota_credito import AccionNota, EstadoNota
+from app.domain.nota_credito import AccionNota, EstadoNota, NivelAprobacion
 
 TextoObligatorio = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 # Un comentario opcional que solo tiene espacios se guarda como NULL, no como texto vacío.
@@ -53,6 +53,7 @@ class NotaCreditoPublic(SQLModel):
     monto: Decimal
     detalle: str
     estado: EstadoNota
+    nivel_aprobacion: NivelAprobacion
     motivo_nota_credito_id: int
     motivo: str
     departamento_id: int

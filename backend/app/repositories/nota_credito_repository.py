@@ -28,6 +28,14 @@ class NotaConDetalle:
 
 
 @dataclass(frozen=True)
+class AlcanceNotas:
+    """Qué notas puede ver el usuario. Un campo en None significa "sin ese límite"."""
+
+    departamento_id: int | None = None
+    solicitante_id: int | None = None
+
+
+@dataclass(frozen=True)
 class EventoConUsuario:
     evento: NotaCreditoHistorico
     usuario: str
@@ -45,11 +53,16 @@ def existe_motivo(session: Session, motivo_id: int) -> bool:
 
 # --- Lectura de notas --------------------------------------------------------------------
 
-def _consulta_con_detalle(departamento_id: int | None):
-    """Nota + motivo + departamento + nombres del solicitante y del resolutor.
+def _aplicar_alcance(stmt, alcance: AlcanceNotas):
+    if alcance.departamento_id is not None:
+        stmt = stmt.where(NotaCredito.departamento_id == alcance.departamento_id)
+    if alcance.solicitante_id is not None:
+        stmt = stmt.where(NotaCredito.solicitante_id == alcance.solicitante_id)
+    return stmt
 
-    departamento_id: alcance del usuario; None significa sin límite (Administrador).
-    """
+
+def _consulta_con_detalle(alcance: AlcanceNotas):
+    """Nota + motivo + departamento + nombres del solicitante y del resolutor, dentro del alcance."""
     solicitante = aliased(Usuario)
     colab_solicitante = aliased(Colaborador)
     resolutor = aliased(Usuario)
@@ -73,9 +86,7 @@ def _consulta_con_detalle(departamento_id: int | None):
         .outerjoin(resolutor, NotaCredito.resolutor_id == resolutor.usuario_id)
         .outerjoin(colab_resolutor, resolutor.colaborador_id == colab_resolutor.colaborador_id)
     )
-    if departamento_id is not None:
-        stmt = stmt.where(NotaCredito.departamento_id == departamento_id)
-    return stmt
+    return _aplicar_alcance(stmt, alcance)
 
 
 def _a_nota_con_detalle(fila) -> NotaConDetalle:
@@ -90,9 +101,9 @@ def _a_nota_con_detalle(fila) -> NotaConDetalle:
 
 
 def listar_notas(
-    session: Session, departamento_id: int | None, estado: str | None
+    session: Session, alcance: AlcanceNotas, estado: str | None
 ) -> list[NotaConDetalle]:
-    stmt = _consulta_con_detalle(departamento_id)
+    stmt = _consulta_con_detalle(alcance)
     if estado is not None:
         stmt = stmt.where(NotaCredito.estado_actual == estado)
     stmt = stmt.order_by(col(NotaCredito.creada_en).desc(), col(NotaCredito.nota_credito_id).desc())
@@ -100,23 +111,21 @@ def listar_notas(
 
 
 def obtener_nota(
-    session: Session, nota_id: int, departamento_id: int | None
+    session: Session, nota_id: int, alcance: AlcanceNotas
 ) -> NotaConDetalle | None:
     fila = session.exec(
-        _consulta_con_detalle(departamento_id).where(NotaCredito.nota_credito_id == nota_id)
+        _consulta_con_detalle(alcance).where(NotaCredito.nota_credito_id == nota_id)
     ).first()
     return _a_nota_con_detalle(fila) if fila else None
 
 
-def bloquear_nota(session: Session, nota_id: int, departamento_id: int | None) -> NotaCredito | None:
+def bloquear_nota(session: Session, nota_id: int, alcance: AlcanceNotas) -> NotaCredito | None:
     """Lee la nota y bloquea su fila hasta el fin de la transacción (SELECT … FOR UPDATE).
 
     Si dos usuarios actúan sobre la misma nota a la vez, el segundo espera a que el
     primero termine y ve el estado ya actualizado: la nota no se resuelve dos veces.
     """
-    stmt = select(NotaCredito).where(NotaCredito.nota_credito_id == nota_id)
-    if departamento_id is not None:
-        stmt = stmt.where(NotaCredito.departamento_id == departamento_id)
+    stmt = _aplicar_alcance(select(NotaCredito).where(NotaCredito.nota_credito_id == nota_id), alcance)
     return session.exec(stmt.with_for_update()).first()
 
 
@@ -144,6 +153,7 @@ def insertar_nota(
     motivo_id: int,
     monto: Decimal,
     detalle: str,
+    nivel_aprobacion: str,
 ) -> int:
     """Inserta una nota PENDIENTE. La BD asigna el número, el estado inicial y las fechas."""
     stmt = (
@@ -154,6 +164,7 @@ def insertar_nota(
             motivo_nota_credito_id=motivo_id,
             monto=monto,
             detalle=detalle,
+            nivel_aprobacion=nivel_aprobacion,
         )
         .returning(NotaCredito.nota_credito_id)
     )

@@ -30,6 +30,7 @@ class NotaCredito(SQLModel, table=True):
     monto: Decimal
     detalle: str
     estado_actual: str
+    nivel_aprobacion: str
     creada_en: datetime
     actualizada_en: datetime
 
