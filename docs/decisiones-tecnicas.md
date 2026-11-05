@@ -58,6 +58,15 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ### Decisiones de diseño
 
+- **El departamento del colaborador sale de su cargo.** El colaborador no tiene su propio `departamento_id`: se obtiene con `colaborador → cargo → departamento`. 
+- **`usuario` está separado de `colaborador`.** El colaborador es la ficha laboral; el usuario es el acceso al portal. No todo colaborador necesita entrar, y la contraseña queda aislada de los datos que se muestran en las consultas.
+- **Hay dos campos `activo`.** El de `colaborador` indica si la persona sigue trabajando en la VP; el de `usuario`, si puede entrar al portal. Así se puede bloquear el acceso sin dar de baja a la persona. Para iniciar sesión se exigen los dos.
+- **El correo es del colaborador**, no del usuario, porque es un dato laboral que todos deben tener. El login usa ese correo.
+- **Países, niveles, roles, funciones y motivos son tablas catálogo.** Evitan escribir el mismo valor de formas distintas
+- **Cargos y funciones se relacionan con la tabla `cargo_funcion`.** Un cargo tiene varias funciones y una función puede estar en varios cargos
+- **La nota de crédito guarda el estado actual y el historial guarda cada cambio.** La tabla de historial solo admite agregar filas: no se puede modificar ni borrar.
+- **Las reglas importantes también están en la base de datos**, no solo en el backend: montos mayores que cero, estados válidos, nadie aprueba su propia nota y solo transiciones permitidas en el historial. Si el backend fallara, la base de datos las rechaza igual.
+
 ## 3. Proceso de negocio (sección 3.4)
 
 - **Decisión:** opción 2, flujo de aprobación de notas de crédito.
