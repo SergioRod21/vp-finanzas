@@ -21,7 +21,7 @@ from tests.usuarios import ADMIN, COLABORADOR, JEFE
 
 NOTA = NotaCreditoPublic(
     nota_credito_id=1, numero="NC-000001", monto=Decimal("1250.00"), detalle="Lote dañado",
-    estado="PENDIENTE", motivo_nota_credito_id=1, motivo="Devolución de mercancía",
+    estado="PENDIENTE", nivel_aprobacion="ADMINISTRADOR", motivo_nota_credito_id=1, motivo="Devolución de mercancía",
     departamento_id=2, departamento="Tesorería", solicitante_id=3, solicitante="Ricardo Palencia",
     resolutor_id=None, resolutor=None,
     creada_en=datetime(2026, 11, 4, tzinfo=UTC), actualizada_en=datetime(2026, 11, 4, tzinfo=UTC),
@@ -58,16 +58,17 @@ PETICIONES = {
     "anular": ("post", "/api/notas-credito/1/anular", {}),
 }
 
-# peticion → (Administrador, Jefe, Colaborador)
+# peticion → (Administrador, Jefe, Colaborador). Solo el rol: las reglas que dependen
+# de la nota (alcance, autoría, nivel de aprobación) las verifica el servicio.
 ESPERADO = {
-    "motivos": (200, 200, 403),
-    "listar": (200, 200, 403),
-    "detalle": (200, 200, 403),
-    "historial": (200, 200, 403),
-    "crear": (403, 201, 403),
-    "aprobar": (200, 403, 403),
-    "rechazar": (200, 403, 403),
-    "anular": (403, 200, 403),
+    "motivos": (200, 200, 200),
+    "listar": (200, 200, 200),
+    "detalle": (200, 200, 200),
+    "historial": (200, 200, 200),
+    "crear": (403, 201, 201),
+    "aprobar": (200, 200, 403),
+    "rechazar": (200, 200, 403),
+    "anular": (403, 200, 200),
 }
 
 
