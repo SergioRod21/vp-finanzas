@@ -196,4 +196,7 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 
 ## 5. Limitaciones conocidas y mejoras futuras
 
-- **Sin límite de intentos de login:** no hay protección contra fuerza bruta (rate limiting ni bloqueo temporal tras varios intentos fallidos). En un despliegue real se agregaría en el backend o en el proxy.
+- **Sin migraciones.** Los scripts de `db/` solo se ejecutan al crear la base de datos. Para cambiar el schema hay que recrearla (`docker compose down -v`), lo que borra los datos. Agregaría una herramienta de migraciones, como Alembic, para aplicar cambios sin perder información.
+- **Sin límite de intentos de login.** Hoy se pueden probar contraseñas sin límite. El login ya evita revelar qué correos existen (mismo mensaje y mismo tiempo de respuesta), pero no frena un ataque de fuerza bruta. Agregaría un límite de intentos por usuario y por IP.
+- **Sin tests automáticos del frontend.** El backend tiene tests unitarios y de integración, pero el frontend solo se verificó con un navegador automatizado durante el desarrollo. Agregaría tests de componentes (Vitest) y de los flujos principales (Playwright).
+- **Sin auditoría de accesos.** Las notas de crédito guardan un historial completo, pero los inicios de sesión, los cierres y los intentos fallidos no quedan registrados. Agregaría una tabla de eventos de acceso que solo admita agregar filas, con la misma lógica que el historial de notas.
