@@ -5,7 +5,7 @@ import type { NotaCredito } from '@/features/notas-credito/types'
 import { api } from '@/lib/api-client'
 
 /**
- * POST /api/notas-credito/{id}/rechazar (solo el Administrador). El comentario es
+ * POST /api/notas-credito/{id}/rechazar (el Jefe para las notas de sus colaboradores; el Administrador para las de los Jefes). El comentario es
  * obligatorio: queda en la auditoría como motivo del rechazo. 409 si la nota ya no está
  * PENDIENTE.
  */

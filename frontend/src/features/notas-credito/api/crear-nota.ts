@@ -5,8 +5,8 @@ import type { NotaCredito, NuevaNotaCredito } from '@/features/notas-credito/typ
 import { api } from '@/lib/api-client'
 
 /**
- * POST /api/notas-credito (solo el Jefe de Departamento). La nota queda PENDIENTE y
- * para el departamento del Jefe: el departamento no se envía, lo decide el backend.
+ * POST /api/notas-credito (Colaborador o Jefe de Departamento). La nota queda PENDIENTE y
+ * para el departamento del solicitante: el departamento no se envía, lo decide el backend.
  */
 export function crearNota(datos: NuevaNotaCredito): Promise<NotaCredito> {
   return api<NotaCredito>('/notas-credito', { method: 'POST', body: datos })

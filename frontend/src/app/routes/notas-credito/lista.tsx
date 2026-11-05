@@ -8,6 +8,15 @@ import { TablaNotasCredito } from '@/features/notas-credito/components/tabla-not
 import { esEstadoNota, type EstadoNota } from '@/features/notas-credito/types'
 import { useUsuarioAutenticado } from '@/lib/auth/usuario-actual'
 import { puedeCrearNota } from '@/lib/authorization'
+import { ROLES, type Rol } from '@/types/rol'
+
+/** El listado ya llega filtrado por el backend según el rol; aquí solo se describe. */
+const DESCRIPCION_SEGUN_ROL: Record<Rol, string> = {
+  [ROLES.administrador]: 'Notas de crédito de todos los departamentos. Apruebas las que solicitan los Jefes.',
+  [ROLES.jefeDepartamento]:
+    'Notas de crédito de tu departamento. Apruebas las que solicitan tus colaboradores.',
+  [ROLES.colaborador]: 'Las notas de crédito que solicitaste. Las aprueba el Jefe de tu departamento.',
+}
 
 /** Parámetro de la URL con el filtro: el mismo nombre que usa el backend (?estado=). */
 const PARAMETRO_ESTADO = 'estado'
@@ -34,8 +43,8 @@ export function NotasCreditoRoute() {
   return (
     <Stack gap="lg">
       <EncabezadoPagina
-        titulo="Notas de crédito"
-        descripcion="Solicitudes de notas de crédito, su estado y quién las resolvió."
+        titulo={usuario.rol === ROLES.colaborador ? 'Mis notas de crédito' : 'Notas de crédito'}
+        descripcion={DESCRIPCION_SEGUN_ROL[usuario.rol]}
         acciones={
           puedeCrearNota(usuario) ? (
             <Button component={Link} to={paths.notasCredito.nueva}>

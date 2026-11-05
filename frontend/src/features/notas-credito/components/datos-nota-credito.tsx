@@ -2,7 +2,7 @@ import { DataList, Text } from '@mantine/core'
 import type { ReactNode } from 'react'
 
 import { BadgeEstadoNota } from '@/features/notas-credito/components/badge-estado-nota'
-import type { NotaCredito } from '@/features/notas-credito/types'
+import { APROBADOR_SEGUN_NIVEL, type NotaCredito } from '@/features/notas-credito/types'
 import { formatearFechaHora, formatearMonto } from '@/utils/formatos'
 
 function Dato({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
@@ -35,11 +35,14 @@ export function DatosNotaCredito({ nota }: { nota: NotaCredito }) {
       </Dato>
       <Dato etiqueta="Departamento">{nota.departamento}</Dato>
       <Dato etiqueta="Solicitante">{nota.solicitante}</Dato>
+      <Dato etiqueta="Aprueba">{APROBADOR_SEGUN_NIVEL[nota.nivel_aprobacion]}</Dato>
       {/* Solo aprobar y rechazar registran un resolutor: una nota anulada no lo tiene. */}
       <Dato etiqueta="Resolutor">
         {nota.resolutor ?? (
           <Text span size="sm" c="dimmed">
-            {nota.estado === 'PENDIENTE' ? 'Pendiente de resolución' : 'Sin resolutor'}
+            {nota.estado === 'PENDIENTE'
+              ? `Pendiente de aprobación del ${APROBADOR_SEGUN_NIVEL[nota.nivel_aprobacion]}`
+              : 'Sin resolutor'}
           </Text>
         )}
       </Dato>
