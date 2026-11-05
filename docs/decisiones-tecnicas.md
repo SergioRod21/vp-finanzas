@@ -65,11 +65,20 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
 - **Países, niveles, roles, funciones y motivos son tablas catálogo.** Evitan escribir el mismo valor de formas distintas
 - **Cargos y funciones se relacionan con la tabla `cargo_funcion`.** Un cargo tiene varias funciones y una función puede estar en varios cargos
 - **La nota de crédito guarda el estado actual y el historial guarda cada cambio.** La tabla de historial solo admite agregar filas: no se puede modificar ni borrar.
+- **La nota guarda quién debe aprobarla (`nivel_aprobacion`).** Se fija al crearla, según el rol del solicitante: Jefe de Departamento si la pidió un Colaborador, Administrador si la pidió un Jefe. Es una fotografía del momento: si el solicitante cambia de rol después, la nota no cambia de aprobador. Es un valor con un `CHECK` de dos opciones, no una referencia a la tabla `rol`, porque guarda una regla del proceso.
 - **Las reglas importantes también están en la base de datos**, no solo en el backend: montos mayores que cero, estados válidos, nadie aprueba su propia nota y solo transiciones permitidas en el historial. Si el backend fallara, la base de datos las rechaza igual.
 
 ## 3. Proceso de negocio (sección 3.4)
 
 - **Decisión:** opción 2, flujo de aprobación de notas de crédito.
+- **Flujo:** quien solicita una nota nunca la aprueba, y el aprobador depende del rol del solicitante:
+
+  | Quién solicita | Quién aprueba o rechaza | Quién puede anular |
+  |---|---|---|
+  | Colaborador | El Jefe de su departamento | Quien la solicitó, mientras está pendiente |
+  | Jefe de Departamento | El Administrador | Quien la solicitó, mientras está pendiente |
+
+  Solo se puede actuar sobre una nota pendiente: aprobada, rechazada y anulada son estados finales.
 - **Alternativas consideradas:** opción 1 (detector de anomalías en cierres de caja) y un proceso propio.
 - **Motivo:**
   - **Relevancia para el negocio:** el contexto del enunciado nombra los procesos de aprobación entre las tareas diarias del equipo de Transformación Financiera. Una nota de crédito reduce lo que un cliente debe, así que mueve dinero: es justo el tipo de operación que una organización financiera no permite ejecutar a una sola persona.
@@ -83,7 +92,7 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
   - **Por qué no la opción 1:** su lógica principal son algoritmos de detección (umbrales, transposición de dígitos, reincidencia), un ejercicio valioso pero que necesita entidades ajenas a la estructura de la VP de Finanzas (tiendas, cajeros y cierres) y se relaciona poco con el control de acceso por departamento que ya está modelado. El esquema crecería más y el módulo quedaría desconectado del resto del portal.
   - **Por qué no un proceso propio:** las opciones del enunciado ya cubren el nivel de exigencia esperado. Proponer otro proceso agregaba el riesgo de tener que demostrar que es equivalente, sin un beneficio claro.
 - **Alcance:**
-  - Incluido: crear solicitudes, consultarlas según el alcance del rol, aprobarlas, rechazarlas o anularlas con reglas de transición explícitas, e historial completo de auditoría.
+  - Incluido: crear solicitudes, consultarlas según el alcance del rol, aprobarlas o rechazarlas según quién las solicitó, anularlas, reglas de transición explícitas e historial completo de auditoría.
   - Fuera del alcance: la integración con un sistema de facturación real, la emisión contable de la nota y los niveles de aprobación según el monto (posible mejora futura).
 - **Contras asumidos:**
   - El valor del módulo depende de que las reglas estén bien diseñadas y probadas. Si la máquina de estados o los permisos se implementan de forma superficial, el proceso se reduce a un CRUD con un campo de estado.
@@ -138,34 +147,37 @@ Diagrama y diccionario de tablas: [modelo-datos/erd.md](modelo-datos/erd.md).
   | **Colaboradores:** listar y ver | ✅ Todos los departamentos | ✅ Su departamento, ficha completa | 🔸 Su departamento, solo nombre, apellido, cargo y correo de los activos |
   | **Cargos y funciones:** ver | ✅ Todos | ✅ Los de su departamento | 🔸 Solo su propio cargo |
   | **Mi perfil:** ver | ✅ El propio | ✅ El propio | ✅ El propio |
-  | **Notas de crédito:** ver el módulo | ✅ | ✅ | ❌ |
-  | Notas: listar y ver el detalle | ✅ Todas | ✅ Las de su departamento | ❌ |
-  | Notas: crear solicitud | ❌ | ✅ Para su departamento | ❌ |
-  | Notas: aprobar o rechazar | ✅ Las que no solicitó él mismo | ❌ | ❌ |
-  | Notas: anular | ❌ | 🔸 Solo las propias y en estado pendiente | ❌ |
-  | Notas: ver el historial | ✅ Todas | ✅ Las de su departamento | ❌ |
+  | **Notas de crédito:** ver el módulo | ✅ | ✅ | ✅ |
+  | Notas: listar, ver el detalle y el historial | ✅ Todas | ✅ Las de su departamento | 🔸 Solo las que solicitó |
+  | Notas: crear solicitud | ❌ | ✅ Para su departamento | ✅ Para su departamento |
+  | Notas: aprobar o rechazar | 🔸 Solo las solicitadas por Jefes | 🔸 Solo las solicitadas por los colaboradores de su departamento | ❌ |
+  | Notas: anular | ❌ | 🔸 Las propias, en estado pendiente | 🔸 Las propias, en estado pendiente |
 
-  Módulos visibles por rol (sección 3.3): el Administrador y el Jefe de Departamento ven los cuatro; el Colaborador ve tres (Colaboradores, Cargos y funciones, y Mi perfil).
+  Los tres roles ven los cuatro módulos (sección 3.3); lo que cambia es el alcance y las acciones disponibles en cada uno.
 
 - **Cómo se resuelven los puntos que el enunciado deja abiertos:**
-  - **"Información limitada" del colaborador:** el directorio de su departamento con datos de contacto, su propio cargo y su perfil. No ve datos como la fecha de ingreso o el país de sus compañeros.
-  - **Solicitud de notas de crédito:** el colaborador no puede crear solicitudes, para respetar el acceso de solo lectura que define la sección 3.2. Las solicita el Jefe de Departamento.
-  - **Aprobación:** la aprueba o rechaza el Administrador. Así se cumple estructuralmente que el aprobador pertenece a un rol distinto del solicitante (sección 3.4).
-  - **Recursos fuera de alcance:** responden **403** cuando el rol no tiene acceso al módulo o a la acción, y **404** cuando el recurso pertenece a otro departamento, para no revelar que existe.
+  - **"Información limitada" del colaborador:** el directorio de su departamento con datos de contacto, su propio cargo, su perfil y sus propias notas de crédito. No ve datos como la fecha de ingreso o el país de sus compañeros, ni las notas que solicitan otras personas.
+  - **El Colaborador solicita notas de crédito.** La sección 3.2 define su acceso como de solo lectura. Se interpreta así: el Colaborador no modifica ningún dato de la organización ni decide nada; solo inicia una solicitud que otra persona, con autoridad sobre su área, revisa y aprueba o rechaza.
+  - **Quién aprueba depende de quién solicita:** la nota de un Colaborador la resuelve el Jefe de su departamento; la de un Jefe, el Administrador. En los dos casos el aprobador tiene un rol distinto del solicitante, como pide la sección 3.4.
+  - **Recursos fuera de alcance:** responden **403** cuando el rol no tiene acceso a la acción (por ejemplo, el Administrador que intenta aprobar la nota de un Colaborador) y **404** cuando el recurso está fuera de su alcance, para no revelar que existe.
 - **Implementación:**
   - Una dependencia de FastAPI resuelve en cada petición el usuario autenticado, su rol y su departamento, leídos de la base de datos (ver [S2](#s2-mecanismo-de-sesión)).
-  - Cada endpoint declara qué roles acepta, y las consultas filtran por departamento cuando el rol es Jefe de Departamento o Colaborador.
+  - Cada endpoint declara qué roles acepta, y las consultas filtran por departamento (Jefe) o por solicitante (Colaborador).
+  - Al crear una nota se guarda su nivel de aprobación (`nivel_aprobacion`). Al aprobar o rechazar, el backend verifica que el rol del usuario coincida con ese nivel.
   - Las respuestas del Colaborador usan modelos `*Public` reducidos, que solo exponen los campos permitidos.
   - El frontend oculta los módulos y acciones no permitidos solo como experiencia de usuario: la seguridad real está en el backend.
   - **Defensa en profundidad:** además de la matriz, la base de datos impide que el resolutor de una nota sea quien la solicitó (`CHECK`), aunque una regla del backend fallara.
 - **Alternativas consideradas:**
-  - **El Colaborador solicita y aprueba el Jefe de su departamento** (y si solicita el Jefe, aprueba el Administrador): un flujo más rico, pero contradice el acceso de solo lectura del Colaborador.
-  - **El Administrador también puede crear solicitudes:** se descartó para que su rol sea supervisar y aprobar.
-  - **El Jefe ve notas de otros departamentos:** se descartó para mantener el mismo alcance por departamento en todo el portal.
-- **Motivo:** la matriz cumple literalmente las definiciones de roles de la sección 3.2 y la segregación de funciones de la sección 3.4, con un flujo de aprobación de un solo nivel, fácil de verificar con tests: cada celda de la matriz corresponde a un caso de prueba.
+  - **Solo el Jefe solicita y solo el Administrador aprueba** (la primera versión de esta matriz): respetaba literalmente el "solo lectura" del Colaborador, pero el Colaborador no podía iniciar una solicitud aunque fuera quien detectaba el problema, y todas las notas dependían de una sola persona para aprobarse.
+  - **El Administrador también aprueba las notas de los colaboradores**, como respaldo del Jefe: se descartó para que cada nota tenga un único aprobador posible, lo que hace el flujo más claro y fácil de auditar.
+  - **El Colaborador ve todas las notas de su departamento:** se descartó porque le mostraría montos y motivos de las solicitudes de sus compañeros.
+- **Motivo:**
+  - **Realismo:** en una operación normal, quien detecta la necesidad de una nota de crédito (por ejemplo, la persona que atiende la devolución) es quien inicia el trámite, y su Jefe, que conoce el área, lo aprueba.
+  - **Reparte la carga de aprobación:** cada Jefe aprueba lo de su departamento, y el Administrador solo interviene en las notas de los Jefes.
+  - **Se mantiene la segregación de funciones** en los dos caminos, y cada celda de la matriz corresponde a un caso de prueba.
 - **Contras asumidos:**
-  - El Administrador es el único aprobador posible, así que puede convertirse en un cuello de botella.
-  - El Colaborador no puede iniciar solicitudes, aunque en una operación real podría detectar la necesidad de una nota de crédito.
+  - La interpretación del "solo lectura" del Colaborador es discutible; queda explicada arriba.
+  - Si el Jefe de un departamento no está disponible, las notas de sus colaboradores esperan, porque no hay un aprobador alternativo.
 - **En un despliegue real:** niveles de aprobación según el monto, delegación temporal de la aprobación (por ejemplo, durante vacaciones) y permisos configurables por base de datos en lugar de definidos en el código.
 
 ### S4. Secretos de desarrollo y usuarios de demostración
