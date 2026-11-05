@@ -36,3 +36,17 @@ def resolver_filtro_departamento(
     if departamento_solicitado not in (None, alcance):
         return False, None
     return True, alcance
+
+
+def alcance_notas_credito(usuario: UsuarioActual) -> tuple[int | None, int | None]:
+    """Qué notas de crédito ve el usuario: (departamento, solicitante); None = sin ese límite.
+
+    - Administrador: todas.
+    - Jefe de Departamento: las de su departamento.
+    - Colaborador: solo las que él solicitó.
+    """
+    if es_administrador(usuario):
+        return None, None
+    if es_colaborador(usuario):
+        return usuario.departamento_id, usuario.usuario_id
+    return usuario.departamento_id, None

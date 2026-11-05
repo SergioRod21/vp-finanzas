@@ -24,13 +24,24 @@ from app.models.nota_credito_public import (
 )
 from app.services import nota_credito_service
 
-# Roles con acceso al módulo (matriz S3): el Colaborador no lo ve.
+# Roles por operación (matriz S3). Las reglas que dependen de la nota concreta
+# (alcance, quién la solicitó, quién debe aprobarla) las verifica el servicio.
 UsuarioDelModulo = Annotated[
+    UsuarioActual,
+    Depends(require_roles(
+        RolNombre.ADMINISTRADOR, RolNombre.JEFE_DEPARTAMENTO, RolNombre.COLABORADOR,
+    )),
+]
+# Solicitar y anular: el Colaborador y el Jefe.
+Solicitante = Annotated[
+    UsuarioActual,
+    Depends(require_roles(RolNombre.JEFE_DEPARTAMENTO, RolNombre.COLABORADOR)),
+]
+# Aprobar y rechazar: el Jefe (notas de colaboradores) y el Administrador (notas de jefes).
+Aprobador = Annotated[
     UsuarioActual,
     Depends(require_roles(RolNombre.ADMINISTRADOR, RolNombre.JEFE_DEPARTAMENTO)),
 ]
-Jefe = Annotated[UsuarioActual, Depends(require_roles(RolNombre.JEFE_DEPARTAMENTO))]
-Administrador = Annotated[UsuarioActual, Depends(require_roles(RolNombre.ADMINISTRADOR))]
 
 router = APIRouter(prefix="/api/notas-credito", tags=["notas de crédito"])
 router_motivos = APIRouter(prefix="/api/motivos-nota-credito", tags=["notas de crédito"])
@@ -43,13 +54,14 @@ def listar_motivos(usuario: UsuarioDelModulo, session: SessionDep):
 
 @router.get("", response_model=list[NotaCreditoPublic])
 def listar_notas(usuario: UsuarioDelModulo, session: SessionDep, estado: EstadoNota | None = None):
-    """Administrador: todas. Jefe: las de su departamento. Filtro opcional por estado."""
+    """Administrador: todas. Jefe: las de su departamento. Colaborador: las suyas.
+    Filtro opcional por estado."""
     return nota_credito_service.listar(session, usuario, estado)
 
 
 @router.post("", response_model=NotaCreditoPublic, status_code=status.HTTP_201_CREATED)
-def crear_nota(datos: NotaCreditoCrear, usuario: Jefe, session: SessionDep):
-    """Solicita una nota para el departamento del Jefe."""
+def crear_nota(datos: NotaCreditoCrear, usuario: Solicitante, session: SessionDep):
+    """Solicita una nota para el departamento del solicitante."""
     return nota_credito_service.crear(session, usuario, datos)
 
 
@@ -65,7 +77,7 @@ def historial_nota(nota_id: int, usuario: UsuarioDelModulo, session: SessionDep)
 
 @router.post("/{nota_id}/aprobar", response_model=NotaCreditoPublic)
 def aprobar_nota(
-    nota_id: int, usuario: Administrador, session: SessionDep,
+    nota_id: int, usuario: Aprobador, session: SessionDep,
     datos: AccionConComentario | None = None,
 ):
     comentario = datos.comentario if datos else None
@@ -73,13 +85,13 @@ def aprobar_nota(
 
 
 @router.post("/{nota_id}/rechazar", response_model=NotaCreditoPublic)
-def rechazar_nota(nota_id: int, datos: RechazoNota, usuario: Administrador, session: SessionDep):
+def rechazar_nota(nota_id: int, datos: RechazoNota, usuario: Aprobador, session: SessionDep):
     return nota_credito_service.rechazar(session, usuario, nota_id, datos.comentario)
 
 
 @router.post("/{nota_id}/anular", response_model=NotaCreditoPublic)
 def anular_nota(
-    nota_id: int, usuario: Jefe, session: SessionDep,
+    nota_id: int, usuario: Solicitante, session: SessionDep,
     datos: AccionConComentario | None = None,
 ):
     """Solo el solicitante, mientras la nota está pendiente."""
