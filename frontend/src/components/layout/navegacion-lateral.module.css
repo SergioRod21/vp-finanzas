@@ -1,0 +1,12 @@
+/* Ítem activo: fondo y texto del variant light del tema, más una barra con el acento
+   de la marca (#0081C5, tono 6 de "marca"). El texto queda en el azul oscuro para
+   mantener el contraste que pide WCAG AA. */
+.enlace {
+  border-left: 3px solid transparent;
+  border-radius: var(--mantine-radius-sm);
+}
+
+.enlace[data-active] {
+  border-left-color: var(--mantine-color-marca-6);
+  font-weight: 600;
+}

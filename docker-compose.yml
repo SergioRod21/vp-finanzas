@@ -1,0 +1,71 @@
+# Configuración base del proyecto.
+# Uso:  cp .env.example .env   (los valores de ejemplo sirven para desarrollo local)
+#       docker compose up -d --build
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      # ${VAR:?mensaje} hace que Compose falle si la variable no está definida en .env
+      POSTGRES_DB: ${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+      POSTGRES_USER: ${POSTGRES_USER:?Definir POSTGRES_USER en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Definir POSTGRES_PASSWORD en .env}
+      # Leídas por db/00-app-user.sql
+      APP_DB_USER: ${APP_DB_USER:?Definir APP_DB_USER en .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}
+      # Leída por db/05-seed-usuarios.sql (contraseña de los usuarios de demostración)
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?Definir SEED_USER_PASSWORD en .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Scripts de inicialización: se ejecutan en orden alfabético
+      # y SOLO cuando el volumen pgdata está vacío.
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # $$ evita que Compose interpole: la variable se resuelve dentro del contenedor.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend_net
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      # Se conecta como el usuario de la aplicación (privilegios mínimos), nunca como el administrador.
+      # El host es "db": el nombre del servicio dentro de la red de Docker.
+      DATABASE_URL: postgresql+psycopg://${APP_DB_USER:?Definir APP_DB_USER en .env}:${APP_DB_PASSWORD:?Definir APP_DB_PASSWORD en .env}@db:5432/${POSTGRES_DB:?Definir POSTGRES_DB en .env}
+      APP_ENV: ${APP_ENV:-development}
+      JWT_SECRET: ${JWT_SECRET:?Definir JWT_SECRET en .env}
+      JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
+    depends_on:
+      db:
+        condition: service_healthy   # espera a que PostgreSQL acepte conexiones
+    networks:
+      - backend_net    # para llegar a la base de datos
+      - frontend_net   # para recibir las peticiones /api que reenvía nginx
+    # Sin "ports": el backend no se publica en el host. Se accede a través del frontend.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy   # nginx reenvía /api al backend
+    networks:
+      - frontend_net
+    # Único servicio publicado en el host, y solo en 127.0.0.1.
+    ports:
+      - "127.0.0.1:${FRONTEND_PORT:-8080}:8080"
+
+volumes:
+  pgdata:
+
+networks:
+  # Red entre el backend y la base de datos: sin salida a internet.
+  backend_net:
+    internal: true
+  # Red entre el frontend (nginx) y el backend. La base de datos no está en ella.
+  frontend_net:

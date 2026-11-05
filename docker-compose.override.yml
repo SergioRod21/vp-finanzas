@@ -1,0 +1,29 @@
+# Solo para desarrollo. Docker Compose aplica este archivo automáticamente
+# junto con docker-compose.yml.
+#
+# Publica PostgreSQL y el backend en 127.0.0.1 para usarlos desde el host
+# (DBeaver o pgAdmin, y la documentación de la API en http://localhost:8000/docs).
+# En una red "internal" Docker no publica puertos, por eso estos servicios
+# se unen además a una red de desarrollo.
+
+services:
+  db:
+    ports:
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
+    networks:
+      - backend_net
+      - dev_net
+
+  backend:
+    ports:
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
+    networks:
+      - backend_net
+      - dev_net
+    # Recarga automática: el código se monta desde el host y uvicorn reinicia al guardar.
+    volumes:
+      - ./backend/app:/app/app:ro
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+networks:
+  dev_net:

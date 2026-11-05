@@ -1,1 +1,18 @@
+# Enunciado de la prueba (documento de terceros)
 Enunciado*.pdf
+
+# Variables de entorno: nunca versionar secretos
+.env
+.env.*
+!.env.example
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
